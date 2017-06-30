@@ -406,6 +406,8 @@ ImageSamplerItk::imageFlip(const int & axis)
 void
 ImageSamplerItk::ItkImageSampler(MooseMesh & mesh)
 {
+  // typedef signed short    PixelType;
+  //const unsigned int      Dimension = 3;
 
 }
 
