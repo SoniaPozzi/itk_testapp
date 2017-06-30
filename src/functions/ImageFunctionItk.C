@@ -24,14 +24,15 @@ validParams<ImageFunctionItk>()
   params += validParams<ImageSamplerItk>();
   params.addClassDescription("Function with values sampled from a given image stack");
   return params;
-}
+}     
 
 ImageFunctionItk::ImageFunctionItk(const InputParameters & parameters)
   : ImageSamplerItk(parameters), Function(parameters)
 {
 }
 
-ImageFunctionItk::~ImageFunctionItk() {}
+
+ImageFunctionItk::~ImageFunctionItk() {}  
 
 void
 ImageFunctionItk::initialSetup()

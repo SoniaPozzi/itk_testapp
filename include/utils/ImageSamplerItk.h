@@ -17,7 +17,7 @@
 
 // MOOSE includes
 #include "FileRangeBuilder.h"
-#include "ConsoleStream.h"
+#include "ConsoleStream.h"  
 
 // libmesh includes
 #include "libmesh/mesh_tools.h"
@@ -50,6 +50,10 @@
 #include "libmesh/restore_warnings.h"
 
 #include "itkImage.h"
+#include "itkGDCMImageIO.h"
+#include "itkGDCMSeriesFileNames.h"
+#include "itkImageSeriesReader.h" 
+#include "itkImageFileWriter.h"
 
 
 #endif
