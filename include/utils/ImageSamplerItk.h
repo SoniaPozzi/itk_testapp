@@ -52,7 +52,7 @@
 #include "itkImage.h"
 #include "itkGDCMImageIO.h"
 #include "itkGDCMSeriesFileNames.h"
-#include "itkImageSeriesReader.h" 
+#include "itkImageSeriesReader.h"   
 #include "itkImageFileWriter.h"
 
 
