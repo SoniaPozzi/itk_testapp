@@ -23,6 +23,7 @@
 #include "itkGDCMSeriesFileNames.h"
 #include "itkTIFFImageIO.h"
 #include "itkPNGImageIOFactory.h"
+#include "itkTIFFImageIOFactory.h"
 //#include "itkDICOMImageIO2.h"
 //#include "itkImageIOBase.h"
 
@@ -541,10 +542,11 @@ try{
     // Register an IO Factory for writing PNG files.
     // https://www.itk.org/Wiki/ITK/FAQ#NoFactoryException
     itk::PNGImageIOFactory::RegisterOneFactory();
+    itk::TIFFImageIOFactory::RegisterOneFactory();
 
     typedef itk::ImageFileWriter< ImageType > WriterType;
     WriterType::Pointer writer = WriterType::New();
-     writer->SetFileName("outputFilename.png" );
+     writer->SetFileName("outputFilename.tiff" );
     writer->SetInput( reader->GetOutput() );
      //writer->SetImageIO(analyzeIO);
 // Software Guide : EndCodeSnippet
