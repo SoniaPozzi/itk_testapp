@@ -17,12 +17,15 @@
 #include "MooseApp.h"
 #include "ImageMesh.h"
 #include <iostream>
+
+// ITK headers
 #include "itkGDCMImageIO.h"
 #include "itkGDCMSeriesFileNames.h"
 #include "itkTIFFImageIO.h"
-  
+#include "itkPNGImageIOFactory.h"
 //#include "itkDICOMImageIO2.h"
 //#include "itkImageIOBase.h"
+
 template <>
 InputParameters
 validParams<ImageSamplerItk>()
@@ -534,14 +537,19 @@ try{
 //
 // Software Guide : EndLatex
 // Software Guide : BeginCodeSnippet
+
+    // Register an IO Factory for writing PNG files.
+    // https://www.itk.org/Wiki/ITK/FAQ#NoFactoryException
+    itk::PNGImageIOFactory::RegisterOneFactory();
+
     typedef itk::ImageFileWriter< ImageType > WriterType;
     WriterType::Pointer writer = WriterType::New();
-     writer->SetFileName("outputFilename.tiff" );
+     writer->SetFileName("outputFilename.png" );
     writer->SetInput( reader->GetOutput() );
      //writer->SetImageIO(analyzeIO);
 // Software Guide : EndCodeSnippet
-    std::cout  << "Writing the image as " << std::endl << std::endl;
-    std::cout  <<  "brain.tiff"  << std::endl << std::endl;
+//    std::cout  << "Writing the image as " << std::endl << std::endl;
+//    std::cout  <<  "brain.png"  << std::endl << std::endl;
 // Software Guide : BeginLatex
 //
 // The process of writing the image is initiated by invoking the
@@ -556,8 +564,8 @@ try{
       }
     catch (itk::ExceptionObject &ex)
       {
-      std::cout << ex << std::endl;
-       mooseError("Problem1");
+        std::cout << "Caught ITK Exception: " << ex << std::endl;
+        mooseError("Problem1");
       }
     }
   catch (itk::ExceptionObject &ex)
