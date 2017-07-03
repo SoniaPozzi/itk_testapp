@@ -24,8 +24,13 @@
 #include "itkTIFFImageIO.h"
 #include "itkPNGImageIOFactory.h"
 #include "itkTIFFImageIOFactory.h"
-//#include "itkDICOMImageIO2.h"
-//#include "itkImageIOBase.h"
+#include "itkJPEGImageIOFactory.h"
+#include "itkNrrdImageIOFactory.h"
+#include "itkRescaleIntensityImageFilter.h"
+
+
+
+
 
 template <>
 InputParameters
@@ -427,9 +432,9 @@ ImageSamplerItk::ItkImageSampler(MooseMesh & mesh)
   // see https://itk.org/Doxygen46/html/IO_2DicomSeriesReadImageWrite2_8cxx-example.html
   typedef signed short    PixelType;
   const unsigned int      Dimension = 3;
-  typedef itk::Image<PixelType, Dimension>     ImageType;
+  typedef itk::Image<PixelType, Dimension>     InputImageType;
 
-  typedef itk::ImageSeriesReader< ImageType >        ReaderType;
+  typedef itk::ImageSeriesReader< InputImageType >        ReaderType;
   ReaderType::Pointer reader = ReaderType::New();
 
  // A GDCMImageIO object is created and connected to the reader. This object is
@@ -445,11 +450,11 @@ ImageSamplerItk::ItkImageSampler(MooseMesh & mesh)
     nameGenerator->SetUseSeriesDetails( true );
     //nameGenerator->AddSeriesRestriction("0008|0021" );
     // nameGenerator->SetDirectory("/Users/sonia/Projects/internshipINL/itk_testapp/tests/image_function/new_stack" );
-     nameGenerator->SetDirectory("/Users/petejw/projects/itk_testapp/tests/image_function/new_stack");
+     nameGenerator->SetDirectory("/Users/sonia/Projects/internshipINL/itk_testapp/tests/image_function/new_stack/");
 
 try{
     std::cout << std::endl << "The directory: " << std::endl;
-    std::cout << std::endl << "/Users/sonia/Projects/internshipINL/itk_testapp/tests/image_function/new_stack"  << std::endl << std::endl;
+    std::cout << std::endl << "/Users/sonia/Projects/internshipINL/itk_testapp/tests/image_function/new_stack/"  << std::endl << std::endl;
     std::cout << "Contains the following DICOM Series: ";
     std::cout << std::endl << std::endl;
 
@@ -543,21 +548,18 @@ try{
     // https://www.itk.org/Wiki/ITK/FAQ#NoFactoryException
     itk::PNGImageIOFactory::RegisterOneFactory();
     itk::TIFFImageIOFactory::RegisterOneFactory();
+    itk::JPEGImageIOFactory::RegisterOneFactory();
+    itk::NrrdImageIOFactory::RegisterOneFactory();
 
-    typedef itk::ImageFileWriter< ImageType > WriterType;
+    typedef itk::ImageFileWriter< InputImageType > WriterType;
     WriterType::Pointer writer = WriterType::New();
      writer->SetFileName("outputFilename.tiff" );
     writer->SetInput( reader->GetOutput() );
-     //writer->SetImageIO(analyzeIO);
-// Software Guide : EndCodeSnippet
-//    std::cout  << "Writing the image as " << std::endl << std::endl;
-//    std::cout  <<  "brain.png"  << std::endl << std::endl;
-// Software Guide : BeginLatex
-//
-// The process of writing the image is initiated by invoking the
-// \code{Update()} method of the writer.
-//
-// Software Guide : EndLatex
+
+
+
+
+
     try
       {
 // Software Guide : BeginCodeSnippet
@@ -575,6 +577,16 @@ try{
     std::cout << ex << std::endl;
     mooseError("Problem2");
     }
+
+
+
+
+    typedef unsigned char WritePixelType;
+  typedef itk::Image< WritePixelType, 3 > WriteImageType;
+  typedef itk::RescaleIntensityImageFilter< InputImageType, WriteImageType > RescaleFilterType;
+  RescaleFilterType::Pointer rescaler = RescaleFilterType::New();
+  rescaler->SetOutputMinimum(   0 );
+  rescaler->SetOutputMaximum( 255 );
   // Software Guide : BeginLatex
   //
   // Note that in addition to writing the volumetric image to a file we could
@@ -582,6 +594,31 @@ try{
   // DICOM is simply a file format and a network protocol. Once the image data
   // has been loaded into memory, it behaves as any other volumetric dataset that
   // you could have loaded from any other file format.
+
+ typedef itk::ImageFileWriter< WriteImageType >  Writer2Type;
+  Writer2Type::Pointer writer2 = Writer2Type::New();
+  writer2->SetFileName("outputFilenameFiltred.tiff" );
+  rescaler->SetInput( reader->GetOutput() );
+  writer2->SetInput( rescaler->GetOutput() );
+// Software Guide : EndCodeSnippet
+// Software Guide : BeginLatex
+//
+// The writer can be executed by invoking the \code{Update()} method from
+// inside a \code{try/catch} block.
+//
+// Software Guide : EndLatex
+  try
+    {
+    writer2->Update();
+    }
+  catch (itk::ExceptionObject & e)
+    {
+    std::cerr << "exception in file writer " << std::endl;
+    std::cerr << e << std::endl;
+    mooseError("Problem3");
+    }
+
+
 
 }
 
