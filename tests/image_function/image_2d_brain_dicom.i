@@ -3,7 +3,7 @@
   dim = 3
   nx = 16
   ny = 16
-  nz = 16
+  nz=16
 []
 
 [Variables]
@@ -14,7 +14,7 @@
 [Functions]
   [./image_func]
     type = ImageFunctionItk
-    file_base = new_stack/brain
+    file_base = new_stack/shoulder
     file_suffix = dcm
     file_range = '001' # 002 003 004 005 006 007 008 009 010 011 012 013 014 015 016 017 018 019 020'  # file_range is a vector input, a single entry means "read only 1 file"
    # upper_value=1.0

@@ -192,38 +192,19 @@ ImageSamplerItk::setupImageSampler(MooseMesh & mesh)
   // Indicate that data read has started
   _is_console << "Reading image(s)..." << std::endl;
 
+  _image->SetDirectoryName("/Users/sonia/Projects/internshipINL/itk_testapp/tests/image_function/new_stack/");
+  
+/////// e' come se fossi arrivata qui
 
-
- //_sorter = vtkSmartPointer <vtkDICOMFileSorter>::New();
-
-
-
-  // Extract the data
- // _image->SetFileNames(_files);
-//cout << _files << "\n";
-  // _image->SetDirectoryName("/Users/sonia/Projects/internshipINL/moose/test/tests/functions/image_function/new_stack");
-  _image->SetDirectoryName("/Users/petejw/projects/itk_testapp/tests/image_function/new_stack");
-   _image->Update();
+  _image->Update();
   _data = _image->GetOutput();
   _algorithm = _image->GetOutputPort();
 
 
-
- /*    _viewer= vtkSmartPointer<vtkImageViewer2>::New();
- imageViewer->SetInputConnection(_image->GetOutputPort());
-  vtkSmartPointer<vtkRenderWindowInteractor> renderWindowInteractor = vtkSmartPointer<vtkRenderWindowInteractor>::New();
-  imageViewer->SetupInteractor(renderWindowInteractor);
-  imageViewer->Render();
-  imageViewer->GetRenderer()->ResetCamera();
-  imageViewer->Render();
- 
-  renderWindowInteractor->Start(); */
-
-
-
-
   // Set the image dimensions and voxel size member variable
   int * dims = _data->GetDimensions();
+
+
 
   for (unsigned int i = 0; i < 3; ++i)
   {
@@ -433,6 +414,8 @@ ImageSamplerItk::ItkImageSampler(MooseMesh & mesh)
   typedef signed short    PixelType;
   const unsigned int      Dimension = 3;
   typedef itk::Image<PixelType, Dimension>     InputImageType;
+  typedef itk::Image<PixelType, Dimension>     OutputImageType;
+  typedef itk::Image<PixelType, Dimension>     FinalImageType;
 
   typedef itk::ImageSeriesReader< InputImageType >        ReaderType;
   ReaderType::Pointer reader = ReaderType::New();
@@ -458,13 +441,6 @@ try{
     std::cout << "Contains the following DICOM Series: ";
     std::cout << std::endl << std::endl;
 
-// The GDCMSeriesFileNames object first identifies the list of DICOM series
-// that are present in the given directory. We receive that list in a reference
-// to a container of strings and then we can do things like printing out all
-// the series identifiers that the generator had found. Since the process of
-// finding the series identifiers can potentially throw exceptions, it is
-// wise to put this code inside a try/catch block.
-
    typedef std::vector< std::string >    SeriesIdContainer;
     const SeriesIdContainer & seriesUID = nameGenerator->GetSeriesUIDs();
     SeriesIdContainer::const_iterator seriesItr = seriesUID.begin();
@@ -474,13 +450,6 @@ try{
       std::cout << seriesItr->c_str() << std::endl;
       ++seriesItr;
       }
-
-// Given that it is common to find multiple DICOM series in the same directory,
-// we must tell the GDCM classes what specific series do we want to read. In
-// this example we do this by checking first if the user has provided a series
-// identifier in the command line arguments. If no series identifier has been
-// passed, then we simply use the first series found during the exploration of
-// the directory.
 
 
      std::string seriesIdentifier;
@@ -492,79 +461,51 @@ try{
       {
       seriesIdentifier = seriesUID.begin()->c_str();
       }
-// Software Guide : EndCodeSnippet
+
     std::cout << std::endl << std::endl;
     std::cout << "Now reading series: " << std::endl << std::endl;
     std::cout << seriesIdentifier << std::endl;
     std::cout << std::endl << std::endl;
 
-// We pass the series identifier to the name generator and ask for all the
-// filenames associated to that series. This list is returned in a container of
-// strings by the \code{GetFileNames()} method. \index{itk::GDCMSeriesFileNames!GetFileNames()}
-
+////////////////////////////////////////////////////////
     typedef std::vector< std::string >   FileNamesContainer;
     FileNamesContainer fileNames;
     fileNames = nameGenerator->GetFileNames( seriesIdentifier );
-// Software Guide : EndCodeSnippet
-// Software Guide : BeginLatex
-//
-//
-// The list of filenames can now be passed to the \doxygen{ImageSeriesReader}
-// using the \code{SetFileNames()} method.
-//
-//  \index{itk::ImageSeriesReader!SetFileNames()}
-
     reader->SetFileNames( fileNames );
 
-// Finally we can trigger the reading process by invoking the \code{Update()}
-// method in the reader. This call as usual is placed inside a \code{try/catch}
-// block.
+
+   OutputImageType  * _dataitk;
     try
       {
       reader->Update();
+      _dataitk=reader->GetOutput();
+      //dovremmo fare il get image dimensions
+      InputImageType::SizeType imageSize = 
+_dataitk->GetLargestPossibleRegion().GetSize();
+
+std::cout<<imageSize<<std::endl;
       }
     catch (itk::ExceptionObject &ex)
       {
       std::cout << ex << std::endl;
       }
     
-// Software Guide : BeginLatex
-//
-// At this point, we have a volumetric image in memory that we can access by
-// invoking the \code{GetOutput()} method of the reader.
-//
-// Software Guide : EndLatex
-// Software Guide : BeginLatex
-//
-// We proceed now to save the volumetric image in another file, as specified by
-// the user in the command line arguments of this program. Thanks to the
-// ImageIO factory mechanism, only the filename extension is needed to identify
-// the file format in this case.
-//
-// Software Guide : EndLatex
-// Software Guide : BeginCodeSnippet
-
-    // Register an IO Factory for writing PNG files.
-    // https://www.itk.org/Wiki/ITK/FAQ#NoFactoryException
-    itk::PNGImageIOFactory::RegisterOneFactory();
+///////////////////////////////////////////////
     itk::TIFFImageIOFactory::RegisterOneFactory();
-    itk::JPEGImageIOFactory::RegisterOneFactory();
-    itk::NrrdImageIOFactory::RegisterOneFactory();
+
 
     typedef itk::ImageFileWriter< InputImageType > WriterType;
     WriterType::Pointer writer = WriterType::New();
-     writer->SetFileName("outputFilename.tiff" );
+    writer->SetFileName("outputFilename.tiff" );
     writer->SetInput( reader->GetOutput() );
-
-
-
 
 
     try
       {
-// Software Guide : BeginCodeSnippet
+
       writer->Update();
-// Software Guide : EndCodeSnippet
+       
+
       }
     catch (itk::ExceptionObject &ex)
       {
@@ -580,33 +521,41 @@ try{
 
 
 
-
-    typedef unsigned char WritePixelType;
+////// apply the filter 
+  typedef unsigned char WritePixelType;
   typedef itk::Image< WritePixelType, 3 > WriteImageType;
   typedef itk::RescaleIntensityImageFilter< InputImageType, WriteImageType > RescaleFilterType;
   RescaleFilterType::Pointer rescaler = RescaleFilterType::New();
   rescaler->SetOutputMinimum(   0 );
   rescaler->SetOutputMaximum( 255 );
-  // Software Guide : BeginLatex
-  //
-  // Note that in addition to writing the volumetric image to a file we could
-  // have used it as the input for any 3D processing pipeline. Keep in mind that
-  // DICOM is simply a file format and a network protocol. Once the image data
-  // has been loaded into memory, it behaves as any other volumetric dataset that
-  // you could have loaded from any other file format.
 
- typedef itk::ImageFileWriter< WriteImageType >  Writer2Type;
+
+////////// here we read pixels, position and value
+
+
+
+   /////////write filtred image
+
+  typedef itk::ImageFileWriter< WriteImageType >  Writer2Type;
   Writer2Type::Pointer writer2 = Writer2Type::New();
   writer2->SetFileName("outputFilenameFiltred.tiff" );
   rescaler->SetInput( reader->GetOutput() );
   writer2->SetInput( rescaler->GetOutput() );
-// Software Guide : EndCodeSnippet
-// Software Guide : BeginLatex
-//
-// The writer can be executed by invoking the \code{Update()} method from
-// inside a \code{try/catch} block.
-//
-// Software Guide : EndLatex
+
+  rescaler->GetOutput();
+
+ 
+  itk::ImageIOBase::IOPixelType pixelType
+                                       = reader->GetImageIO()->GetPixelType();
+  itk::ImageIOBase::IOComponentType componentType
+                                   = reader->GetImageIO()->GetComponentType();
+  std::cout << "PixelType: " << reader->GetImageIO()
+                               ->GetPixelTypeAsString(pixelType) << std::endl;
+  std::cout << "Component Type: " << reader->GetImageIO()
+                       ->GetComponentTypeAsString(componentType) << std::endl;
+
+
+
   try
     {
     writer2->Update();
@@ -618,7 +567,7 @@ try{
     mooseError("Problem3");
     }
 
-
+//////////////////////////////
 
 }
 

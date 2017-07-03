@@ -155,6 +155,8 @@ private:
   vtkSmartPointer<vtkImageFlip> _flip_filter;
 #endif
 
+  
+
 /**
  * Helper method for flipping image
  * @param axis Flag for determing the flip axis: "x=0", "y=1", "z=2"
