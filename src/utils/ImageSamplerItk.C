@@ -192,7 +192,8 @@ ImageSamplerItk::setupImageSampler(MooseMesh & mesh)
   // Extract the data
  // _image->SetFileNames(_files);
 //cout << _files << "\n";
-  _image->SetDirectoryName("/Users/sonia/Projects/internshipINL/moose/test/tests/functions/image_function/new_stack");
+  // _image->SetDirectoryName("/Users/sonia/Projects/internshipINL/moose/test/tests/functions/image_function/new_stack");
+  _image->SetDirectoryName("/Users/petejw/projects/itk_testapp/tests/image_function/new_stack");
    _image->Update();
   _data = _image->GetOutput();
   _algorithm = _image->GetOutputPort();
@@ -439,7 +440,8 @@ ImageSamplerItk::ItkImageSampler(MooseMesh & mesh)
 
     nameGenerator->SetUseSeriesDetails( true );
     //nameGenerator->AddSeriesRestriction("0008|0021" );
-     nameGenerator->SetDirectory("/Users/sonia/Projects/internshipINL/itk_testapp/tests/image_function/new_stack" );
+    // nameGenerator->SetDirectory("/Users/sonia/Projects/internshipINL/itk_testapp/tests/image_function/new_stack" );
+     nameGenerator->SetDirectory("/Users/petejw/projects/itk_testapp/tests/image_function/new_stack");
 
 try{
     std::cout << std::endl << "The directory: " << std::endl;
