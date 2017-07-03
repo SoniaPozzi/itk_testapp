@@ -97,8 +97,6 @@ ImageSamplerItk::setupImageSampler(MooseMesh & mesh)
 
   ItkImageSampler(mesh);
   // Don't warn that mesh or _is_pars are unused when VTK is not enabled.
-
-
   std::cout<<"Back to VTK..................."<<std::endl;
   libmesh_ignore(mesh);
   libmesh_ignore(_is_pars);
@@ -204,16 +202,14 @@ ImageSamplerItk::setupImageSampler(MooseMesh & mesh)
   // Set the image dimensions and voxel size member variable
   int * dims = _data->GetDimensions();
 
-
-
   for (unsigned int i = 0; i < 3; ++i)
   {
     _dims.push_back(dims[i]);
-int prova= (_dims[i]);
+   int prova= (_dims[i]);
   std::cout<<prova<<std::endl;
-
-
     _voxel.push_back(_physical_dims(i) / _dims[i]);
+   std::cout<<"voxel dopo"<<std::endl;
+  std::cout<<_voxel[i]<<std::endl;
   }
 
   // Set the dimensions of the image and bounding box
@@ -240,9 +236,6 @@ int prova= (_dims[i]);
 
   // Apply filters, the toggling on and off of each filter is handled internally
   vtkMagnitude();
-  vtkShiftAndScale();
-  vtkThreshold();
-  vtkFlip();
 #endif
 }
 
@@ -301,114 +294,13 @@ ImageSamplerItk::vtkMagnitude()
 #endif
 }
 
-void
-ImageSamplerItk::vtkShiftAndScale()
-{
-#ifdef LIBMESH_HAVE_VTK
-  // Capture the parameters
-  double shift = _is_pars.get<double>("shift");
-  double scale = _is_pars.get<double>("scale");
-
-  // Do nothing if shift and scale are not set
-  if (shift == 0 && scale == 1)
-    return;
-
-  // Perform the scaling and offset actions
-  _shift_scale_filter = vtkSmartPointer<vtkImageShiftScale>::New();
-  _shift_scale_filter->SetOutputScalarTypeToDouble();
-
-  _shift_scale_filter->SetInputConnection(_algorithm);
-  _shift_scale_filter->SetShift(shift);
-  _shift_scale_filter->SetScale(scale);
-  _shift_scale_filter->Update();
-
-  // Update the pointers
-  _data = _shift_scale_filter->GetOutput();
-  _algorithm = _shift_scale_filter->GetOutputPort();
-#endif
-}
-
-void
-ImageSamplerItk::vtkThreshold()
-{
-#ifdef LIBMESH_HAVE_VTK
-  // Do nothing if threshold not set
-  if (!_is_pars.isParamValid("threshold"))
-    return;
-
-  // Error if both upper and lower are not set
-  if (!_is_pars.isParamValid("upper_value") || !_is_pars.isParamValid("lower_value"))
-    mooseError("When thresholding is applied, both the upper_value and lower_value parameters must "
-               "be set");
-
-  // Create the thresholding object
-  _image_threshold = vtkSmartPointer<vtkImageThreshold>::New();
-
-  // Set the data source
-  _image_threshold->SetInputConnection(_algorithm);
-
-  // Setup the thresholding options
-  _image_threshold->ThresholdByUpper(_is_pars.get<Real>("threshold"));
-  _image_threshold->ReplaceInOn();
-  _image_threshold->SetInValue(_is_pars.get<Real>("upper_value"));
-  _image_threshold->ReplaceOutOn();
-  _image_threshold->SetOutValue(_is_pars.get<Real>("lower_value"));
-  _image_threshold->SetOutputScalarTypeToDouble();
-
-  // Perform the thresholding
-  _image_threshold->Update();
-
-  // Update the pointers
-  _data = _image_threshold->GetOutput();
-  _algorithm = _image_threshold->GetOutputPort();
-#endif
-}
-
-void
-ImageSamplerItk::vtkFlip()
-{
-#ifdef LIBMESH_HAVE_VTK
-  // Convert boolean values into an integer array, then loop over it
-  int mask[3] = {
-      _is_pars.get<bool>("flip_x"), _is_pars.get<bool>("flip_y"), _is_pars.get<bool>("flip_z")};
-
-  for (int dim = 0; dim < 3; ++dim)
-  {
-    if (mask[dim])
-    {
-      _flip_filter = imageFlip(dim);
-
-      // Update pointers
-      _data = _flip_filter->GetOutput();
-      _algorithm = _flip_filter->GetOutputPort();
-    }
-  }
-#endif
-}
-
-#ifdef LIBMESH_HAVE_VTK
-vtkSmartPointer<vtkImageFlip>
-ImageSamplerItk::imageFlip(const int & axis)
-{
-  vtkSmartPointer<vtkImageFlip> flip_image = vtkSmartPointer<vtkImageFlip>::New();
-
-  flip_image->SetFilteredAxis(axis);
-
-  // Set the data source
-  flip_image->SetInputConnection(_algorithm);
-
-  // Perform the flip
-  flip_image->Update();
-
-  // Return the flip filter pointer
-  return flip_image;
-}
-#endif
-
 
 void
 ImageSamplerItk::ItkImageSampler(MooseMesh & mesh)
 {
+
+
+  itk::TIFFImageIOFactory::RegisterOneFactory();
 
   // see https://itk.org/Doxygen46/html/IO_2DicomSeriesReadImageWrite2_8cxx-example.html
   typedef signed short    PixelType;
@@ -464,8 +356,7 @@ try{
 
     std::cout << std::endl << std::endl;
     std::cout << "Now reading series: " << std::endl << std::endl;
-    std::cout << seriesIdentifier << std::endl;
-    std::cout << std::endl << std::endl;
+    std::cout << seriesIdentifier << std::endl << std::endl;
 
 ////////////////////////////////////////////////////////
     typedef std::vector< std::string >   FileNamesContainer;
@@ -479,49 +370,23 @@ try{
       {
       reader->Update();
       _dataitk=reader->GetOutput();
-      //dovremmo fare il get image dimensions
-      InputImageType::SizeType imageSize = 
-_dataitk->GetLargestPossibleRegion().GetSize();
-
-std::cout<<imageSize<<std::endl;
       }
-    catch (itk::ExceptionObject &ex)
+    catch(itk::ExceptionObject &ex)
       {
       std::cout << ex << std::endl;
       }
-    
-///////////////////////////////////////////////
-    itk::TIFFImageIOFactory::RegisterOneFactory();
+  
+      //dovremmo fare il get image dimensions
+      InputImageType::SizeType imageSize =_dataitk->GetLargestPossibleRegion().GetSize();
+      std::cout<<imageSize<<std::endl;
 
-
-    typedef itk::ImageFileWriter< InputImageType > WriterType;
-    WriterType::Pointer writer = WriterType::New();
-    writer->SetFileName("outputFilename.tiff" );
-    writer->SetInput( reader->GetOutput() );
-
-
-    try
-      {
-
-      writer->Update();
-       
-
+       for (unsigned int i = 0; i < 3; ++i){
+      _voxel2.push_back(_physical_dims(i) / imageSize[i]);
+       std::cout<<imageSize[i]<<std::endl;
+       std::cout<<"voxel dopo"<<std::endl;
+        std::cout<<_voxel2[i]<<std::endl;
       }
-    catch (itk::ExceptionObject &ex)
-      {
-        std::cout << "Caught ITK Exception: " << ex << std::endl;
-        mooseError("Problem1");
-      }
-    }
-  catch (itk::ExceptionObject &ex)
-    {
-    std::cout << ex << std::endl;
-    mooseError("Problem2");
-    }
-
-
-
-////// apply the filter 
+  ////// apply the filter 
   typedef unsigned char WritePixelType;
   typedef itk::Image< WritePixelType, 3 > WriteImageType;
   typedef itk::RescaleIntensityImageFilter< InputImageType, WriteImageType > RescaleFilterType;
@@ -529,43 +394,41 @@ std::cout<<imageSize<<std::endl;
   rescaler->SetOutputMinimum(   0 );
   rescaler->SetOutputMaximum( 255 );
 
-
-////////// here we read pixels, position and value
-
-
-
    /////////write filtred image
 
   typedef itk::ImageFileWriter< WriteImageType >  Writer2Type;
-  Writer2Type::Pointer writer2 = Writer2Type::New();
-  writer2->SetFileName("outputFilenameFiltred.tiff" );
+  Writer2Type::Pointer writer = Writer2Type::New();
+  writer->SetFileName("outputFilenameFiltred.tiff" );
   rescaler->SetInput( reader->GetOutput() );
-  writer2->SetInput( rescaler->GetOutput() );
+  writer->SetInput( rescaler->GetOutput() );
+  
+OutputImageType<PixelType, Dimension> giovanna;
+  giovanna=rescaler->GetOutput();
 
-  rescaler->GetOutput();
 
+   _data->SetSpacing(_voxel[0], _voxel[1], _voxel[2]);
  
-  itk::ImageIOBase::IOPixelType pixelType
-                                       = reader->GetImageIO()->GetPixelType();
-  itk::ImageIOBase::IOComponentType componentType
-                                   = reader->GetImageIO()->GetComponentType();
-  std::cout << "PixelType: " << reader->GetImageIO()
-                               ->GetPixelTypeAsString(pixelType) << std::endl;
-  std::cout << "Component Type: " << reader->GetImageIO()
-                       ->GetComponentTypeAsString(componentType) << std::endl;
+  itk::ImageIOBase::IOPixelType pixelType = reader->GetImageIO()->GetPixelType();
+  itk::ImageIOBase::IOComponentType componentType = reader->GetImageIO()->GetComponentType();
+  std::cout << "PixelType: " << reader->GetImageIO()->GetPixelTypeAsString(pixelType) << std::endl;
+  std::cout << "Component Type: " << reader->GetImageIO() ->GetComponentTypeAsString(componentType) << std::endl;
 
+     try
+     {
+     writer->Update();
+     }
+    catch (itk::ExceptionObject & e)
+     {
+     std::cerr << e << std::endl;
+     mooseError("Exception in file writer");
+     }
+}
 
+catch (itk::ExceptionObject &ex){
+    mooseError("exception in reading dicom series");
 
-  try
-    {
-    writer2->Update();
-    }
-  catch (itk::ExceptionObject & e)
-    {
-    std::cerr << "exception in file writer " << std::endl;
-    std::cerr << e << std::endl;
-    mooseError("Problem3");
-    }
+}
+
 
 //////////////////////////////
 

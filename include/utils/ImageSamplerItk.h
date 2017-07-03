@@ -102,26 +102,8 @@ protected:
    * Apply image re-scaling using the vtkImageShiftAndRescale object
    */
   void  ItkImageSampler(MooseMesh & mesh);
-  void vtkShiftAndScale();
-
-  /**
-   * Perform thresholding
-   */
-  void vtkThreshold();
-
-  /**
-   * Convert the image to greyscale
-   *
-   * By leaving the 'component' input parameter empty, this is called automatically.
-   */
   void vtkMagnitude();
 
-  /**
-   * Perform image flipping
-   *
-   * Flip the image along the x, y, and/or z axis. If multiple flips occur, they happen in order.
-   */
-  void vtkFlip();
 
 private:
 #ifdef LIBMESH_HAVE_VTK
@@ -177,6 +159,7 @@ private:
 
   /// Physical pixel size
   std::vector<double> _voxel;
+  std::vector<double> _voxel2;
 
 /// Component to extract
 #ifdef LIBMESH_HAVE_VTK
