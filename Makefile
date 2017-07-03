@@ -54,7 +54,11 @@ include            $(FRAMEWORK_DIR)/app.mk
 
 ###############################################################################
 # Additional special case targets should be added here
-ADDITIONAL_LIBS := -L/opt/pozzis/itk/4.12/lib \
+
+# Set ITK_DIR variable if it is not already set in the environment.
+ITK_DIR ?= /opt/pozzis/itk/4.12
+
+ADDITIONAL_LIBS := -L$(ITK_DIR)/lib \
 -lITKBiasCorrection-4.12.1 \
 -lITKBioCell-4.12.1 \
 -lITKCommon-4.12.1 \
@@ -140,4 +144,4 @@ ADDITIONAL_LIBS := -L/opt/pozzis/itk/4.12/lib \
 -lITKznz-4.12.1 
 
 
-app_INCLUDES += -I/opt/pozzis/itk/4.12/include/ITK-4.12
+app_INCLUDES += -I$(ITK_DIR)/include/ITK-4.12
