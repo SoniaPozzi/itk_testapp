@@ -91,6 +91,7 @@ public:
    * @param p The point at which to extract pixel data
    */
   virtual Real sample(const Point & p);
+  virtual Real itksample(const Point & p);
 
   /**
    * Perform initialization of image data
@@ -166,6 +167,8 @@ private:
   unsigned int _component;
 #endif
 
+
+
   /// Bounding box for testing points
   MeshTools::BoundingBox _bounding_box;
 
@@ -174,6 +177,17 @@ private:
 
   /// Create a console stream object for this helper class
   ConsoleStream _is_console;
+
+
+  typedef unsigned char WritePixelType;
+  typedef itk::Image< WritePixelType, 3 > WriteImageType;
+  typedef itk::ImageFileWriter< WriteImageType >  Writer2Type;
+
+  Writer2Type::Pointer writer = Writer2Type::New();
+   Writer2Type::Pointer writer2 = Writer2Type::New();
+  WriteImageType::Pointer scaledImage=WriteImageType::New();
+
+
 };
 
 #endif // IMAGESAMPLERDICOM_H

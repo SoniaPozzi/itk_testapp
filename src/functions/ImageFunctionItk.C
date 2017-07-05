@@ -45,5 +45,7 @@ ImageFunctionItk::initialSetup()
 Real
 ImageFunctionItk::value(Real /*t*/, const Point & p)
 {
+itksample(p);
+
   return sample(p);
 }
