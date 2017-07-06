@@ -184,27 +184,20 @@ private:
 protected:
  
 
-   typedef signed short    PixelType;
+  typedef short    PixelType;
+  typedef unsigned char WritePixelType;
   const unsigned int      Dimension = 3;
   typedef itk::Image<PixelType, 3>     ImageType;
-
   typedef itk::ImageSeriesReader<ImageType >        ReaderType;
-  ReaderType::Pointer reader = ReaderType::New();
- ImageType::SizeType imageSize;
-
-
-    typedef std::vector< std::string >   FileNamesContainer;
-    FileNamesContainer fileNames;
-
-
-  typedef unsigned char WritePixelType;
+  typedef std::vector< std::string >   FileNamesContainer;
   typedef itk::Image< WritePixelType, 3 > WriteImageType;
   typedef itk::ImageFileWriter< WriteImageType >  Writer2Type;
+  typedef itk::RescaleIntensityImageFilter< ImageType, WriteImageType > RescaleFilterType;
 
-     typedef itk::RescaleIntensityImageFilter< ImageType, WriteImageType > RescaleFilterType;
+  ReaderType::Pointer reader = ReaderType::New();
+  ImageType::SizeType imageSize;
+  FileNamesContainer fileNames;
   RescaleFilterType::Pointer rescaler;
-
-
   Writer2Type::Pointer writer = Writer2Type::New();
   WriteImageType::Pointer scaledImage=WriteImageType::New();
 

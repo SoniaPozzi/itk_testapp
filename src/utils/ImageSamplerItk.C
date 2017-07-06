@@ -232,15 +232,13 @@ try{
   rescaler = RescaleFilterType::New();
   rescaler->SetOutputMinimum(   0 );
   rescaler->SetOutputMaximum( 255 );
-
-   /////////write filtred image
   rescaler->SetInput( reader->GetOutput() );
+  rescaler->Update();
+
   scaledImage=(rescaler->GetOutput());
   scaledImage->SetSpacing( inputSpacing );
   scaledImage->GetLargestPossibleRegion();
-  std::cout<<"Scaled image max reg: "<<scaledImage->GetLargestPossibleRegion().GetSize() <<std::endl;
-   std::cout<<"image max reg: "<<reader->GetOutput()->GetLargestPossibleRegion().GetSize() <<std::endl;
-
+ 
   std::cout<<"Transformed Voxels Size"<<std::endl;
  
  for (unsigned int i = 0; i < 3; ++i)
@@ -251,14 +249,14 @@ try{
 
 ////*********** PARTE 1 fatta //////
 
-       ImageType::SpacingType spacing2;
+       WriteImageType::SpacingType spacing2;
        spacing2[0] = _voxel[0]; // spacing along X
        spacing2[1] = _voxel[1];
        spacing2[2] = _voxel[2];
        scaledImage->SetSpacing(spacing2);
 
 
-      ImageType::PointType newOrigin;
+      WriteImageType::PointType newOrigin;
       newOrigin[0] = _origin(0); // spacing along X
        newOrigin[1] = _origin(1);
        newOrigin[2] = _origin(2);
@@ -293,6 +291,19 @@ try{
 //   coordinate[2]=0.0;
 // const bool isInside2 =scaledImage->TransformPhysicalPointToIndex(coordinate , pixelIndex );
 
+std::cout<<"START TEST"<<std::endl;
+   
+
+   std::cout<<"info about the initial image"<<std::endl;
+   std::cout<<"image max reg: "<<reader->GetOutput()->GetLargestPossibleRegion().GetSize() <<std::endl;
+
+
+    ImageType::IndexType index;
+    index[0] = 100;
+    index[1] = 100;
+    index[2] = 4;
+    std::cout << reader->GetOutput()->GetPixel( index ) << std::endl;
+
   ImageType::IndexType start;
   ImageType::PixelType pixelValue;
 
@@ -307,6 +318,9 @@ try{
   start[1] =   0;  // first index on Y
   start[2] =   0;  // first index on Z
 
+   int i,j,k;
+
+///comment from here
   // WriteImageType::RegionType region;
   // region.SetSize( imageSize );
   // region.SetIndex( start );
@@ -315,8 +329,7 @@ try{
   // reader->GetOutput()->SetRegions( region );
   // reader->GetOutput()->Allocate();
 
-    int i,j,k;
-
+   
   // for ( i=0;i<size_x;i++) {
   //     for ( j=0;j<size_y;j++){
   //         for ( k=0;k<size_z;k++){
@@ -333,7 +346,17 @@ try{
   //     }
   // }
 
+
+//until here
 /////////
+
+   std::cout<<"info about the scaled image"<<std::endl;
+
+  std::cout<<"Scaled image max reg: "<<scaledImage->GetLargestPossibleRegion().GetSize() <<std::endl;
+ 
+    std::cout << static_cast<unsigned int> (scaledImage->GetPixel( index )) << std::endl;
+
+  std::cout<<"fine prova"<<std::endl;
 
   WritePixelType writePixelValue;
 
@@ -358,7 +381,7 @@ try{
 
                writePixelValue = scaledImage->GetPixel(pixelIndex);
              std::cout<<"pixel index"<<pixelIndex<<std::endl;
-             std::cout<<"pixel Values"<<writePixelValue<<std::endl;
+             std::cout<<"pixel Values"<< static_cast<unsigned int>(writePixelValue) <<std::endl;
           }
       }
   }
