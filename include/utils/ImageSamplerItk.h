@@ -58,6 +58,9 @@
 #include "itkImageSeriesWriter.h"
 #include "itkImageIOBase.h"
 
+#include "itkRescaleIntensityImageFilter.h"
+
+
 
 // Software Guide : EndCodeSnippet
 
@@ -91,8 +94,7 @@ public:
    * @param p The point at which to extract pixel data
    */
   virtual Real sample(const Point & p);
-  virtual Real itksample(const Point & p);
-
+ 
   /**
    * Perform initialization of image data
    */
@@ -179,12 +181,31 @@ private:
   ConsoleStream _is_console;
 
 
+protected:
+ 
+
+   typedef signed short    PixelType;
+  const unsigned int      Dimension = 3;
+  typedef itk::Image<PixelType, 3>     ImageType;
+
+  typedef itk::ImageSeriesReader<ImageType >        ReaderType;
+  ReaderType::Pointer reader = ReaderType::New();
+ ImageType::SizeType imageSize;
+
+
+    typedef std::vector< std::string >   FileNamesContainer;
+    FileNamesContainer fileNames;
+
+
   typedef unsigned char WritePixelType;
   typedef itk::Image< WritePixelType, 3 > WriteImageType;
   typedef itk::ImageFileWriter< WriteImageType >  Writer2Type;
 
+     typedef itk::RescaleIntensityImageFilter< ImageType, WriteImageType > RescaleFilterType;
+  RescaleFilterType::Pointer rescaler;
+
+
   Writer2Type::Pointer writer = Writer2Type::New();
-   Writer2Type::Pointer writer2 = Writer2Type::New();
   WriteImageType::Pointer scaledImage=WriteImageType::New();
 
 

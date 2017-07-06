@@ -23,9 +23,7 @@
 #include "itkGDCMSeriesFileNames.h"
 #include "itkTIFFImageIO.h"
 #include "itkTIFFImageIOFactory.h"
-#include "itkRescaleIntensityImageFilter.h"
 
-#include "itkPointSet.h"
 #include <itkPoint.h>
 
 
@@ -91,15 +89,14 @@ void
 ImageSamplerItk::setupImageSampler(MooseMesh & mesh)
 {
 
-  std::cout<<"USING ITK...................."<<std::endl;
+  itk::TIFFImageIOFactory::RegisterOneFactory();
 
-  ItkImageSampler(mesh);
-  // Don't warn that mesh or _is_pars are unused when VTK is not enabled.
-  std::cout<<"Back to VTK..................."<<std::endl;
+  std::cout<<"READING DICOM USING ITK"<<std::endl;
+
+  // Don't warn that mesh or _is_pars are unused when ITK is not enabled.
   libmesh_ignore(mesh);
   libmesh_ignore(_is_pars);
 
-#ifdef LIBMESH_HAVE_VTK
   // Get access to the Mesh object
   MeshTools::BoundingBox bbox = MeshTools::bounding_box(mesh.getMesh());
 
@@ -134,17 +131,9 @@ ImageSamplerItk::setupImageSampler(MooseMesh & mesh)
 
   // An array of filenames, to be filled in
   std::vector<std::string> filenames;
-
   // The file suffix, to be determined
   std::string file_suffix;
 
-  // Try to parse our own file range parameters.  If that fails, then
-  // see if the associated Mesh is an ImageMesh and use its.  If that
-  // also fails, then we have to throw an error...
-  //
-  // The parseFileRange method sets parameters, thus a writable reference to the InputParameters
-  // object must be obtained from the warehouse. Generally, this should be avoided, but
-  // this is a special case.
   if (_status != 0)
   {
     // We don't have parameters, so see if we can get them from ImageMesh
@@ -164,164 +153,8 @@ ImageSamplerItk::setupImageSampler(MooseMesh & mesh)
     file_suffix = fileSuffix();
   }
 
-  // Storage for the file names
-  _files = vtkSmartPointer<vtkStringArray>::New();
-
-  for (const auto & filename : filenames){
-    _files->InsertNextValue(filename);
-    std::cout<<filename<<std::endl;}
-
-  // Error if no files where located
-  if (_files->GetNumberOfValues() == 0)
-    mooseError("No image file(s) located");
-
-  // Read the image stack.  Hurray for VTK not using polymorphism in a
-  // smart way... we actually have to explicitly create the type of
-  // reader based on the file extension, using an if-statement...
-  if (file_suffix == "dicom" || file_suffix == "dcm")
-    _image = vtkSmartPointer<vtkDICOMImageReader>::New();
-
-  else
-    mooseError("Un-supported file type '", file_suffix, "'");
-
-  // Now that _image is set up, actually read the images
-  // Indicate that data read has started
-  _is_console << "Reading image(s)..." << std::endl;
-
-  _image->SetDirectoryName("/Users/sonia/Projects/internshipINL/itk_testapp/tests/image_function/new_stack/");
   
-/////// e' come se fossi arrivata qui
 
-  _image->Update();
-  _data = _image->GetOutput();
-  _algorithm = _image->GetOutputPort();
-
-
-  // Set the image dimensions and voxel size member variable
-  int * dims = _data->GetDimensions();
-
-  for (unsigned int i = 0; i < 3; ++i)
-  {
-    _dims.push_back(dims[i]);
-   int prova= (_dims[i]);
-   std::cout<<prova<<std::endl;
-    _voxel.push_back(_physical_dims(i) / _dims[i]);
-   std::cout<<"voxel dopo"<<std::endl;
-  std::cout<<_voxel[i]<<std::endl;
-  }
-
-  // Set the dimensions of the image and bounding box
-  _data->SetSpacing(_voxel[0], _voxel[1], _voxel[2]);
-  _data->SetOrigin(_origin(0), _origin(1), _origin(2));
-  _bounding_box.min() = _origin;
-  _bounding_box.max() = _origin + _physical_dims;
-
-  // Indicate data read is completed
-  _is_console << "          ...image read finished" << std::endl;
-
-  // Set the component parameter
-  // If the parameter is not set then vtkMagnitude() will applied
-  if (_is_pars.isParamValid("component"))
-  {
-    unsigned int n = _data->GetNumberOfScalarComponents();
-
-
-std::cout<<"Number Of Components Per Pixel"<<n <<std::endl;
-    _component = _is_pars.get<unsigned int>("component");
-    if (_component >= n)
-      mooseError("'component' parameter must be empty or have a value of 0 to ", n - 1);
-  }
-  else
-    _component = 0;
-
-  // Apply filters, the toggling on and off of each filter is handled internally
-  vtkMagnitude();
-#endif
-}
-
-Real
-ImageSamplerItk::sample(const Point & p)
-{
-
-
-#ifdef LIBMESH_HAVE_VTK
-
-  // Do nothing if the point is outside of the image domain
-  if (!_bounding_box.contains_point(p))
-    return 0.0;
-
-  // Determine pixel coordinates
-  std::vector<int> x(3, 0);
-  for (int i = 0; i < LIBMESH_DIM; ++i)
-  {
-    // Compute position, only if voxel size is greater than zero
-    if (_voxel[i] == 0)
-      x[i] = 0;
-
-    else
-    {
-      x[i] = std::floor((p(i) - _origin(i)) / _voxel[i]);
-
-      // If the point falls on the mesh extents the index needs to be decreased by one
-      if (x[i] == _dims[i])
-        x[i]--;
-    }
-  }
-
-if (p(0)==1.0 &&p(1)==1.0 &&p(2)==1.0 ){
-  std::cout<<"VTK SAMPLE"<<std::endl;
-  std::cout<<p<<std::endl;
-  std::cout<< _data->GetScalarComponentAsDouble(x[0], x[1], x[2], _component)<<std::endl;
-
-}
-
-  // Return the image data at the given point
-  return _data->GetScalarComponentAsDouble(x[0], x[1], x[2], _component);
-
-
-
-
-#else
-  libmesh_ignore(p); // avoid un-used parameter warnings
-  return 0.0;
-#endif
-}
-
-void
-ImageSamplerItk::vtkMagnitude()
-{
-#ifdef LIBMESH_HAVE_VTK
-  // Do nothing if 'component' is set
-  if (_is_pars.isParamValid("component"))
-    return;
-
-  // Apply the greyscale filtering
-  _magnitude_filter = vtkSmartPointer<vtkImageMagnitude>::New();
-  _magnitude_filter->SetInputConnection(_algorithm);
-  _magnitude_filter->Update();
-
-  // Update the pointers
-  _data = _magnitude_filter->GetOutput();
-  _algorithm = _magnitude_filter->GetOutputPort();
-#endif
-}
-
-
-void
-ImageSamplerItk::ItkImageSampler(MooseMesh & mesh)
-{
-
-
-  itk::TIFFImageIOFactory::RegisterOneFactory();
-
-  // see https://itk.org/Doxygen46/html/IO_2DicomSeriesReadImageWrite2_8cxx-example.html
-  typedef signed short    PixelType;
-  const unsigned int      Dimension = 3;
-  typedef itk::Image<PixelType, Dimension>     ImageType;
- // typedef itk::Image<PixelType, Dimension>     OutputImageType;
-
-  typedef itk::ImageSeriesReader<ImageType >        ReaderType;
-  ReaderType::Pointer reader = ReaderType::New();
 
  // A GDCMImageIO object is created and connected to the reader. This object is
  // the one that is aware of the internal intricacies of the DICOM format.
@@ -333,12 +166,11 @@ ImageSamplerItk::ItkImageSampler(MooseMesh & mesh)
    NamesGeneratorType::Pointer nameGenerator = NamesGeneratorType::New();
 
    nameGenerator->SetUseSeriesDetails( true );
-   //nameGenerator->AddSeriesRestriction("0008|0021" );
    nameGenerator->SetDirectory("/Users/sonia/Projects/internshipINL/itk_testapp/tests/image_function/new_stack/");
 
 try{
 
-      std::cout<<"DICOM" <<std::endl;
+    std::cout<<"DICOM" <<std::endl;
     std::cout<<"/////////////////////////////" <<std::endl;
     std::cout << std::endl << "The directory: " << std::endl;
     std::cout << std::endl << "/Users/sonia/Projects/internshipINL/itk_testapp/tests/image_function/new_stack/"  << std::endl;
@@ -369,11 +201,8 @@ try{
     std::cout << std::endl << std::endl;
     std::cout << "Now reading series: " << std::endl << std::endl;
     std::cout << seriesIdentifier << std::endl << std::endl;
-
-     ////////////////////////////////////////////////////////
-
-    typedef std::vector< std::string >   FileNamesContainer;
-    FileNamesContainer fileNames = nameGenerator->GetFileNames( seriesIdentifier );
+   
+    fileNames = nameGenerator->GetFileNames( seriesIdentifier );
     reader->SetFileNames( fileNames );
 
     try
@@ -389,46 +218,43 @@ try{
   ///////// info from initial image /////
     std::cout<<"DICOM Serie info" <<std::endl;
     std::cout<<"/////////////////////////////" <<std::endl;
-    ImageType::SizeType imageSize =reader->GetOutput()->GetLargestPossibleRegion().GetSize();
+    imageSize =reader->GetOutput()->GetLargestPossibleRegion().GetSize();
     std::cout<<"Dimensions =" <<imageSize<<std::endl;
     const ImageType::SpacingType& inputSpacing =reader->GetOutput()->GetSpacing();
     std::cout << "Spacing = " << inputSpacing << std::endl;
     const ImageType::PointType & origin = reader->GetOutput()->GetOrigin();
     std::cout << "Origin = "<<  origin << std::endl;
-    std::cout<<"/////////////////////////////" <<std::endl;
 
+    _is_console << "          ...image read finished" << std::endl;
+  
   ////// apply the filter 
 
-  typedef itk::RescaleIntensityImageFilter< ImageType, WriteImageType > RescaleFilterType;
-  RescaleFilterType::Pointer rescaler = RescaleFilterType::New();
+  rescaler = RescaleFilterType::New();
   rescaler->SetOutputMinimum(   0 );
   rescaler->SetOutputMaximum( 255 );
 
-
    /////////write filtred image
-
-
-
-
-
   rescaler->SetInput( reader->GetOutput() );
   scaledImage=(rescaler->GetOutput());
   scaledImage->SetSpacing( inputSpacing );
-   scaledImage->GetLargestPossibleRegion();
+  scaledImage->GetLargestPossibleRegion();
+  std::cout<<"Scaled image max reg: "<<scaledImage->GetLargestPossibleRegion().GetSize() <<std::endl;
+   std::cout<<"image max reg: "<<reader->GetOutput()->GetLargestPossibleRegion().GetSize() <<std::endl;
 
+  std::cout<<"Transformed Voxels Size"<<std::endl;
+ 
+ for (unsigned int i = 0; i < 3; ++i)
+  {
+    _voxel.push_back(_physical_dims(i) / imageSize[i]);
+    std::cout<<_voxel[i]<<std::endl;
+  }
 
-
-      for (unsigned int i = 0; i < 3; ++i){
-     // _voxel2.push_back(_physical_dims(i) / imageSize[i]); //uncomment
-      _voxel2.push_back(5.0);  //comment
-       std::cout<<"voxel dopo"<<std::endl;
-        std::cout<<_voxel2[i]<<std::endl;
-      }
+////*********** PARTE 1 fatta //////
 
        ImageType::SpacingType spacing2;
-       spacing2[0] = _voxel2[0]; // spacing along X
-       spacing2[1] = _voxel2[1];
-       spacing2[2] = _voxel2[2];
+       spacing2[0] = _voxel[0]; // spacing along X
+       spacing2[1] = _voxel[1];
+       spacing2[2] = _voxel[2];
        scaledImage->SetSpacing(spacing2);
 
 
@@ -440,9 +266,125 @@ try{
       scaledImage->SetOrigin( newOrigin);
       std::cout << "New Origin = "<<  newOrigin << std::endl;
 
+     _bounding_box.min() = _origin;
+     _bounding_box.max() = _origin + _physical_dims;
+ 
 
-  writer->SetFileName("outputFilenameFiltred.tiff" );
- writer->SetInput( scaledImage );
+ if (_is_pars.isParamValid("component"))
+  {
+     unsigned int n =  scaledImage->GetNumberOfComponentsPerPixel();
+    std::cout<<"Number Of Components Per Pixel: "<< n <<std::endl;
+    _component = _is_pars.get<unsigned int>("component");
+    
+    if (_component >= n)
+      mooseError("'component' parameter must be empty or have a value of 0 to ", n - 1);
+  }
+  else
+    _component = 0;
+
+  // Apply filters, the toggling on and off of each filter is handled internally
+  
+  //itkMagnitude();
+  WriteImageType::IndexType pixelIndex;
+//  typedef itk::Point< double, WriteImageType::ImageDimension > PointType;
+//   PointType coordinate;
+//   coordinate[0]=0.0;
+//   coordinate[1]=0.0;
+//   coordinate[2]=0.0;
+// const bool isInside2 =scaledImage->TransformPhysicalPointToIndex(coordinate , pixelIndex );
+
+  ImageType::IndexType start;
+  ImageType::PixelType pixelValue;
+
+  Real size_x = imageSize[0];
+  Real size_y = imageSize[1];
+  Real size_z = imageSize[2];
+  std::cout<<"size x"<<size_x<<std::endl;
+  std::cout<<"size y"<<size_y<<std::endl;
+  std::cout<<"size z"<<size_z<<std::endl;
+
+  start[0] =   0;  // first index on X
+  start[1] =   0;  // first index on Y
+  start[2] =   0;  // first index on Z
+
+  // WriteImageType::RegionType region;
+  // region.SetSize( imageSize );
+  // region.SetIndex( start );
+  
+  // // Pixel data is allocated
+  // reader->GetOutput()->SetRegions( region );
+  // reader->GetOutput()->Allocate();
+
+    int i,j,k;
+
+  // for ( i=0;i<size_x;i++) {
+  //     for ( j=0;j<size_y;j++){
+  //         for ( k=0;k<size_z;k++){
+
+             
+  //               pixelIndex[0] = i; // x position
+  //               pixelIndex[1] = j; // y position
+  //               pixelIndex[2] = k; // z position
+
+  //              pixelValue = reader->GetOutput()->GetPixel(pixelIndex);
+  //            std::cout<<"pixel index"<<pixelIndex<<std::endl;
+  //            std::cout<<"pixel Values"<<pixelValue<<std::endl;
+  //         }
+  //     }
+  // }
+
+/////////
+
+  WritePixelType writePixelValue;
+
+  WriteImageType::RegionType writeRegion;
+  writeRegion.SetSize( imageSize );
+  writeRegion.SetIndex( start );
+  
+  // Pixel data is allocated
+
+
+  scaledImage->SetRegions( writeRegion );
+  scaledImage->Allocate();
+
+  for ( i=0;i<size_x;i++) {
+      for ( j=0;j<size_y;j++){
+          for ( k=0;k<size_z;k++){
+
+             
+                pixelIndex[0] = i; // x position
+                pixelIndex[1] = j; // y position
+                pixelIndex[2] = k; // z position
+
+               writePixelValue = scaledImage->GetPixel(pixelIndex);
+             std::cout<<"pixel index"<<pixelIndex<<std::endl;
+             std::cout<<"pixel Values"<<writePixelValue<<std::endl;
+          }
+      }
+  }
+
+  
+
+
+
+   _is_console<<"Exiting from constructor"<<std::endl;
+
+
+ }
+
+catch (itk::ExceptionObject &ex){
+    mooseError("exception in reading dicom series");
+
+}
+
+
+}
+
+Real
+ImageSamplerItk::sample(const Point & p)
+{
+    writer->SetFileName("outputFilenameFiltred.tiff" );
+    writer->SetInput( scaledImage );
 
      try
      {
@@ -454,89 +396,32 @@ try{
      mooseError("Exception in file writer");
      }
 
-
-
-std::cout<<"IMMAGINE PRODOTTA"<<std::endl;
-
-
-
-
-    unsigned int n =  scaledImage->GetNumberOfComponentsPerPixel();
-    std::cout<<"Number Of Components Per Pixel: "<<n <<std::endl;
- 
-
- }
-
-catch (itk::ExceptionObject &ex){
-    mooseError("exception in reading dicom series");
-
-}
-
-
-//////////////////////////////
-
-}
-
-
-
-Real
-ImageSamplerItk::itksample(const Point & p)
-{
-
-
-  writer2->SetFileName("outputFilenameFiltred2.tiff" );
- writer2->SetInput( scaledImage );
-
-     try
-     {
-     writer2->Update();
-     }
-    catch (itk::ExceptionObject & e)
-     {
-     std::cerr << e << std::endl;
-     mooseError("Exception in file writer");
-     }
-
-
-
-//std::cout<<"IMMAGINE PRODOTTA"<<std::endl;
-
-
-
-
   // Do nothing if the point is outside of the image domain
   if (!_bounding_box.contains_point(p))
     return 0.0;
-
   // Determine pixel coordinates
   std::vector<int> x(3, 0);
   for (int i = 0; i < LIBMESH_DIM; ++i)
   {
-    // Compute position, only if voxel size is greater than zero
-    if (_voxel[i] == 0){
-      x[i] = 0;
-      // std::cout<<"printo x nel primp caso"<<  x[i]<<std::endl;
-     }
 
+
+    // Compute position, only if voxel size is greater than zero
+    if (_voxel[i] == 0)
+     { x[i] = 0;
+     std::cout<<"xi nullo"<<std::endl;
+      }
     else
     {
       x[i] = std::floor((p(i) - _origin(i)) / _voxel[i]);
-
-      // std::cout<<"printo p nel secondo caso: "<<  p(i)<<std::endl;
-
+      //std::cout<<"/////////////////"<<std::endl;
+      //std::cout<<"coordinates: "<< x[i]<<std::endl;
       // If the point falls on the mesh extents the index needs to be decreased by one
-      if (x[i] == _dims[i])
+      if (x[i] == imageSize[i])
         x[i]--;
-    }
+
+      }
   }
-
-  
-// if (p(0)==0.8125 &&p(1)==0.9375 &&p(2)==1.0 ){
-
-//   std::cout<<"ITK SAMPLE"<<std::endl;
-//   std::cout<<"punto"<<p<<std::endl;
-//    std::cout<<"coordinate: "<<x[0]<<", "<<x[1]<<", "<<x[2]<<std::endl;}
-
+ 
 
  WriteImageType::IndexType pixelIndex;
 
@@ -544,24 +429,53 @@ ImageSamplerItk::itksample(const Point & p)
   PointType coordinate;
   coordinate[0]=x[0];
   coordinate[1]=x[1];
-  coordinate[2]=x[2];
+  coordinate[2]=x[3];
 
- 
+
 const bool isInside2 =scaledImage->TransformPhysicalPointToIndex(coordinate , pixelIndex );
- if ( isInside2 )
+
+  // pixelIndex[0]=3;
+  // pixelIndex[1]=4;
+  // pixelIndex[2]=5;
+
+ if ( isInside2)
     {
-         std::cout<<"Coordinates"<<coordinate<<std::endl;
-    WriteImageType::PixelType pixelValue = scaledImage->GetPixel( pixelIndex);
+    
+    std::cout<<"Coordinates"<<coordinate<<std::endl;
+    std::cout<<"pixel index"<<pixelIndex<<std::endl;
+    WritePixelType pixelValue = scaledImage->GetPixel(pixelIndex);
+   std::cout<<"pixel Values"<<pixelValue<<std::endl;
 
-     std::cout<<"pixel"<<pixelValue<<std::endl;
-  }
-  
-  //std::cout<< _data->GetScalarComponentAsDouble(x[0], x[1], x[2], _component)<<std::endl;
-
-
-
-  // Return the image data at the given point
-  return _data->GetScalarComponentAsDouble(x[0], x[1], x[2], _component);
-
-
+  return pixelValue;
+ }
+  //libmesh_ignore(p);
+  return 0.0;
 }
+
+
+
+
+
+void
+ImageSamplerItk::vtkMagnitude()
+{
+#ifdef LIBMESH_HAVE_VTK
+  // Do nothing if 'component' is set
+  if (_is_pars.isParamValid("component"))
+    return;
+
+  // Apply the greyscale filtering
+  _magnitude_filter = vtkSmartPointer<vtkImageMagnitude>::New();
+  _magnitude_filter->SetInputConnection(_algorithm);
+  _magnitude_filter->Update();
+
+  // Update the pointers
+  _data = _magnitude_filter->GetOutput();
+  _algorithm = _magnitude_filter->GetOutputPort();
+#endif
+}
+
+
+
+
+
