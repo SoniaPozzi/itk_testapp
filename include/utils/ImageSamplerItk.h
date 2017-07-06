@@ -162,7 +162,7 @@ private:
 
   /// Physical pixel size
   std::vector<double> _voxel;
-  std::vector<double> _voxel2;
+  std::vector<double> _ratios;
 
 /// Component to extract
 #ifdef LIBMESH_HAVE_VTK
@@ -187,12 +187,16 @@ protected:
   typedef short    PixelType;
   typedef unsigned char WritePixelType;
   const unsigned int      Dimension = 3;
+  typedef std::vector< std::string >   FileNamesContainer;
+
   typedef itk::Image<PixelType, 3>     ImageType;
   typedef itk::ImageSeriesReader<ImageType >        ReaderType;
-  typedef std::vector< std::string >   FileNamesContainer;
+
   typedef itk::Image< WritePixelType, 3 > WriteImageType;
   typedef itk::ImageFileWriter< WriteImageType >  Writer2Type;
   typedef itk::RescaleIntensityImageFilter< ImageType, WriteImageType > RescaleFilterType;
+  typedef itk::GDCMImageIO     ImageIOType;
+  typedef itk::GDCMSeriesFileNames NamesGeneratorType;
 
   ReaderType::Pointer reader = ReaderType::New();
   ImageType::SizeType imageSize;
@@ -200,7 +204,11 @@ protected:
   RescaleFilterType::Pointer rescaler;
   Writer2Type::Pointer writer = Writer2Type::New();
   WriteImageType::Pointer scaledImage=WriteImageType::New();
+  ImageIOType::Pointer dicomIO = ImageIOType::New();
+  NamesGeneratorType::Pointer nameGenerator = NamesGeneratorType::New();
 
+ WriteImageType::IndexType pixelIndex;
+ WriteImageType::PixelType pixelValue;
 
 };
 
