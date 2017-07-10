@@ -15,7 +15,6 @@
 // MOOSE includes
 #include "ImageSamplerItk.h"
 #include "MooseApp.h"
-#include "ImageMesh.h"
 #include "ImageMeshItk.h"
 #include <iostream>
 
@@ -23,7 +22,7 @@
 #include "itkGDCMImageIO.h"
 #include "itkGDCMSeriesFileNames.h"
 #include "itkTIFFImageIO.h"
-#include "itkTIFFImageIOFactory.h"
+
 
 #include <itkPoint.h>
 
@@ -126,10 +125,6 @@ ImageSamplerItk::setupImageSampler(MooseMesh & mesh)
   #endif
   }
 
-  // An array of filenames, to be filled in
-  std::vector<std::string> filenames;
-  // The file suffix, to be determined
-  std::string file_suffix;
 
   if (_status != 0)
   {
@@ -151,52 +146,52 @@ ImageSamplerItk::setupImageSampler(MooseMesh & mesh)
   }
 
 
-   reader->SetImageIO( dicomIO );
-   nameGenerator->SetUseSeriesDetails( true );
-   nameGenerator->SetDirectory("/Users/sonia/Projects/internshipINL/itk_testapp/tests/image_function/new_stack/");
+  //  reader->SetImageIO( dicomIO );
+  //  nameGenerator->SetUseSeriesDetails( true );
+  //  nameGenerator->SetDirectory("/Users/sonia/Projects/internshipINL/itk_testapp/tests/image_function/new_stack/");
 
-  try{
+   try{
 
-    std::cout <<"The directory: " << std::endl;
-    std::cout << "/Users/sonia/Projects/internshipINL/itk_testapp/tests/image_function/new_stack/"  << std::endl;
-    std::cout << "Contains the following DICOM Series: "<< std::endl;
+  //   std::cout <<"The directory: " << std::endl;
+  //   std::cout << "/Users/sonia/Projects/internshipINL/itk_testapp/tests/image_function/new_stack/"  << std::endl;
+  //   std::cout << "Contains the following DICOM Series: "<< std::endl;
 
-   typedef std::vector< std::string >    SeriesIdContainer;
-    const SeriesIdContainer & seriesUID = nameGenerator->GetSeriesUIDs();
-    SeriesIdContainer::const_iterator seriesItr = seriesUID.begin();
-    SeriesIdContainer::const_iterator seriesEnd = seriesUID.end();
-    while( seriesItr != seriesEnd )
-      {
-      std::cout << seriesItr->c_str() << std::endl;
-      ++seriesItr;
-      }
+  //  typedef std::vector< std::string >    SeriesIdContainer;
+  //   const SeriesIdContainer & seriesUID = nameGenerator->GetSeriesUIDs();
+  //   SeriesIdContainer::const_iterator seriesItr = seriesUID.begin();
+  //   SeriesIdContainer::const_iterator seriesEnd = seriesUID.end();
+  //   while( seriesItr != seriesEnd )
+  //     {
+  //     std::cout << seriesItr->c_str() << std::endl;
+  //     ++seriesItr;
+  //     }
 
 
-   std::string seriesIdentifier;
-  if( 0) // If no optional series identifier
-    {
-    seriesIdentifier = "se definiamo da fuori la serie da leggere";
-    }
-  else
-    {
-    seriesIdentifier = seriesUID.begin()->c_str();
-    }
+  //  std::string seriesIdentifier;
+  // if( 0) // If no optional series identifier
+  //   {
+  //   seriesIdentifier = "se definiamo da fuori la serie da leggere";
+  //   }
+  // else
+  //   {
+  //   seriesIdentifier = seriesUID.begin()->c_str();
+  //   }
 
-  std::cout << "Now reading series: " << std::endl << std::endl;
-  std::cout << seriesIdentifier << std::endl << std::endl;
+  // std::cout << "Now reading series: " << std::endl << std::endl;
+  // std::cout << seriesIdentifier << std::endl << std::endl;
  
-  fileNames = nameGenerator->GetFileNames( seriesIdentifier );
-  reader->SetFileNames( fileNames );
-
-  try
-    {
-    reader->Update();
-    reader->GetOutput();
-    }
-  catch(itk::ExceptionObject &ex)
-    {
-    std::cout << ex << std::endl;
-    }
+  // fileNames = nameGenerator->GetFileNames( seriesIdentifier );
+  // reader->SetFileNames( fileNames );
+std::cout<<"sono quo"<<std::endl;
+  // try
+  //   {
+  //   reader->Update();
+  //   reader->GetOutput();
+  //   }
+  // catch(itk::ExceptionObject &ex)
+  //   {
+  //   std::cout << ex << std::endl;
+  //   }
 
   imageSize =reader->GetOutput()->GetLargestPossibleRegion().GetSize();
   std::cout<<"DICOM Serie Dimension:    " <<imageSize<<std::endl;

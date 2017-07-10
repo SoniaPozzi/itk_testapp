@@ -31,15 +31,8 @@
 
 #endif
 
-
-#include "itkImage.h"
-#include "itkGDCMImageIO.h"
-#include "itkGDCMSeriesFileNames.h"
-#include "itkImageSeriesReader.h"
 #include "itkImageFileWriter.h"
 #include "itkImageSeriesWriter.h"
-#include "itkImageIOBase.h"
-
 #include "itkRescaleIntensityImageFilter.h"
 
 
