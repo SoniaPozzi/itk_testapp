@@ -5,6 +5,7 @@
 #include "MooseSyntax.h"
 
 #include "ImageFunctionItk.h"
+#include "ImageMeshItk.h"
 
 
 //#include "ImageFunctionItk.h"
@@ -50,6 +51,7 @@ ItkTestAppApp__registerObjects(Factory & factory)
 void
 ItkTestAppApp::registerObjects(Factory & factory)
 {
+   registerMesh(ImageMeshItk);
    registerFunction(ImageFunctionItk);
 }
 

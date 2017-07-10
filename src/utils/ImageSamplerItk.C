@@ -16,6 +16,7 @@
 #include "ImageSamplerItk.h"
 #include "MooseApp.h"
 #include "ImageMesh.h"
+#include "ImageMeshItk.h"
 #include <iostream>
 
 // ITK headers
@@ -34,7 +35,7 @@ validParams<ImageSamplerItk>()
 {
   // Define the general parameters
   InputParameters params = emptyInputParameters();
-  params += validParams<FileRangeBuilder>();
+  params += validParams<FileDicomChoose>();
 
   params.addParam<Point>("origin", "Origin of the image (defaults to mesh origin)");
   params.addParam<Point>("dimensions",
@@ -69,11 +70,7 @@ validParams<ImageSamplerItk>()
 }
 
 ImageSamplerItk::ImageSamplerItk(const InputParameters & parameters)
-: FileRangeBuilder(parameters),
-#ifdef LIBMESH_HAVE_VTK
-  _data(NULL),
-  _algorithm(NULL),
-#endif
+: FileDicomChoose(parameters),
   _is_pars(parameters),
   _is_console((parameters.getCheckedPointerParam<MooseApp *>("_moose_app"))->getOutputWarehouse())
 
@@ -137,20 +134,20 @@ ImageSamplerItk::setupImageSampler(MooseMesh & mesh)
   if (_status != 0)
   {
     // We don't have parameters, so see if we can get them from ImageMesh
-    ImageMesh * image_mesh = dynamic_cast<ImageMesh *>(&mesh);
+    ImageMeshItk * image_mesh = dynamic_cast<ImageMeshItk *>(&mesh);
     if (!image_mesh)
       mooseError("No file range parameters were provided and the Mesh is not an ImageMesh.");
 
     // Get the ImageMesh's parameters.  This should work, otherwise
     // errors would already have been thrown...
-    filenames = image_mesh->filenames();
-    file_suffix = image_mesh->fileSuffix();
+    //filenames = image_mesh->filenames();
+    //file_suffix = image_mesh->fileSuffix();
   }
   else
   {
     // Use our own parameters (using 'this' b/c of conflicts with filenames the local variable)
-    filenames = this->filenames();
-    file_suffix = fileSuffix();
+   // filenames = this->filenames();
+    //file_suffix = fileSuffix();
   }
 
 
@@ -203,7 +200,7 @@ ImageSamplerItk::setupImageSampler(MooseMesh & mesh)
 
   imageSize =reader->GetOutput()->GetLargestPossibleRegion().GetSize();
   std::cout<<"DICOM Serie Dimension:    " <<imageSize<<std::endl;
-  const ImageType::SpacingType& inputSpacing =reader->GetOutput()->GetSpacing();
+  const ImageType::SpacingType& inputSpacing=reader->GetOutput()->GetSpacing();
   std::cout << "DICOM Serie Spacing:    " << inputSpacing << std::endl;
   const ImageType::PointType & origin = reader->GetOutput()->GetOrigin();
   std::cout << "DICOM Serie Origin:    "<<  origin << std::endl;
@@ -230,7 +227,7 @@ std::cout << "Scaling Voxels Ratio    "<<  std::endl; //_voxel <<
 
 
 std::cout<<"phy prima"<<_physical_dims(2)<<std::endl;
-_physical_dims(2)=_physical_dims(2)*imageSize[2]*inputSpacing[2]/(imageSize[1]*inputSpacing[1]);
+//_physical_dims(2)=_physical_dims(2)*imageSize[2]*inputSpacing[2]/(imageSize[1]*inputSpacing[1]);
 std::cout<<"phy dopo"<<_physical_dims(2)<<std::endl;
  for (unsigned int i = 0; i < 3; ++i)
   {   _voxel.push_back(_physical_dims(i) / (imageSize[i]));
@@ -327,31 +324,4 @@ ImageSamplerItk::sample(const Point & p)
   return pixelValue;
 
 }
-
-
-
-
-
-void
-ImageSamplerItk::vtkMagnitude()
-{
-#ifdef LIBMESH_HAVE_VTK
-  // Do nothing if 'component' is set
-  if (_is_pars.isParamValid("component"))
-    return;
-
-  // Apply the greyscale filtering
-  _magnitude_filter = vtkSmartPointer<vtkImageMagnitude>::New();
-  _magnitude_filter->SetInputConnection(_algorithm);
-  _magnitude_filter->Update();
-
-  // Update the pointers
-  _data = _magnitude_filter->GetOutput();
-  _algorithm = _magnitude_filter->GetOutputPort();
-#endif
-}
-
-
-
-
 

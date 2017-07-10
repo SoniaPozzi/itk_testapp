@@ -16,7 +16,7 @@
 #define IMAGESAMPLERITK_H
 
 // MOOSE includes
-#include "FileRangeBuilder.h"
+#include "FileDicomChoose.h"
 #include "ConsoleStream.h"  
 
 // libmesh includes
@@ -29,25 +29,7 @@
 // loves to warn about it...
 #include "libmesh/ignore_warnings.h"
 
-#include "vtkSmartPointer.h"
-#include "vtkDICOMImageReader.h"
-#include "vtkImageData.h"
-#include "vtkStringArray.h"
-#include "vtkImageThreshold.h"
-#include "vtkImageNormalize.h"
-#include "vtkImageCast.h"
-#include "vtkImageShiftScale.h"
-#include "vtkImageMagnitude.h"
-#include "vtkImageFlip.h"
-
-
-#include "vtkRenderWindow.h"
-#include "vtkRenderWindowInteractor.h"
-#include "vtkRenderer.h"
-#include "vtkImageViewer2.h"
-
-
-#include "libmesh/restore_warnings.h"
+#endif
 
 
 #include "itkImage.h"
@@ -64,7 +46,6 @@
 
 // Software Guide : EndCodeSnippet
 
-#endif
 
 // Forward declarations
 class ImageSamplerItk;
@@ -76,7 +57,7 @@ InputParameters validParams<ImageSamplerItk>();
 /**
  * A helper class for reading and sampling images using VTK.
  */
-class ImageSamplerItk : public FileRangeBuilder
+class ImageSamplerItk : public FileDicomChoose
 {
 public:
   /**
@@ -105,52 +86,10 @@ protected:
    * Apply image re-scaling using the vtkImageShiftAndRescale object
    */
   void  ItkImageSampler(MooseMesh & mesh);
-  void vtkMagnitude();
+  
 
 
 private:
-#ifdef LIBMESH_HAVE_VTK
-
-  /// List of file names to extract data
-  vtkSmartPointer<vtkStringArray> _files;
-
-  /// Complete image data
-  vtkImageData * _data;
-
-  /// VTK-6 seems to work better in terms of "algorithm outputs" rather than vtkImageData pointers...
-  vtkAlgorithmOutput * _algorithm;
-
-  /// Complete image data
-  vtkSmartPointer<vtkDICOMImageReader> _image;
-
-  //vtkSmartPointer<vtkDICOMFileSorter> _sorter;
-
- vtkSmartPointer<vtkImageViewer2>  _viewer;
-
-  /// Pointer to thresholding filter
-  vtkSmartPointer<vtkImageThreshold> _image_threshold;
-
-  /// Pointer to the shift and scaling filter
-  vtkSmartPointer<vtkImageShiftScale> _shift_scale_filter;
-
-  /// Pointer to the magnitude filter
-  vtkSmartPointer<vtkImageMagnitude> _magnitude_filter;
-
-  /// Pointers to image flipping filter.  May be used for x, y, or z.
-  vtkSmartPointer<vtkImageFlip> _flip_filter;
-#endif
-
-  
-
-/**
- * Helper method for flipping image
- * @param axis Flag for determing the flip axis: "x=0", "y=1", "z=2"
- * @return A smart pointer the flipping filter
- */
-#ifdef LIBMESH_HAVE_VTK
-  vtkSmartPointer<vtkImageFlip> imageFlip(const int & axis);
-#endif
-
   /// Origin of image
   Point _origin;
 
@@ -165,10 +104,8 @@ private:
   std::vector<double> _ratios;
 
 /// Component to extract
-#ifdef LIBMESH_HAVE_VTK
-  unsigned int _component;
-#endif
 
+  unsigned int _component;
 
 
   /// Bounding box for testing points
@@ -182,30 +119,14 @@ private:
 
 
 protected:
- 
-
-  typedef short    PixelType;
-  typedef unsigned char WritePixelType;
-  const unsigned int      Dimension = 3;
-  typedef std::vector< std::string >   FileNamesContainer;
-
-  typedef itk::Image<PixelType, 3>     ImageType;
-  typedef itk::ImageSeriesReader<ImageType >        ReaderType;
 
   typedef itk::Image< WritePixelType, 3 > WriteImageType;
   typedef itk::ImageFileWriter< WriteImageType >  Writer2Type;
   typedef itk::RescaleIntensityImageFilter< ImageType, WriteImageType > RescaleFilterType;
-  typedef itk::GDCMImageIO     ImageIOType;
-  typedef itk::GDCMSeriesFileNames NamesGeneratorType;
 
-  ReaderType::Pointer reader = ReaderType::New();
-  ImageType::SizeType imageSize;
-  FileNamesContainer fileNames;
   RescaleFilterType::Pointer rescaler;
   Writer2Type::Pointer writer = Writer2Type::New();
   WriteImageType::Pointer scaledImage=WriteImageType::New();
-  ImageIOType::Pointer dicomIO = ImageIOType::New();
-  NamesGeneratorType::Pointer nameGenerator = NamesGeneratorType::New();
 
  WriteImageType::IndexType pixelIndex;
  WriteImageType::PixelType pixelValue;
