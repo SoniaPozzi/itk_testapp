@@ -14,7 +14,9 @@
 
 #include "ImageFunctionItk.h"
 #include "MooseMesh.h"
+#include "libmesh/mesh_generation.h"
 
+using namespace libMesh;
 template <>
 InputParameters
 validParams<ImageFunctionItk>()
@@ -37,8 +39,6 @@ ImageFunctionItk::~ImageFunctionItk() {}
 void
 ImageFunctionItk::initialSetup()
 {
-
-  std::cout<<"ImageFunctionItk::initialSetup"<<std::endl;
   FEProblemBase * fe_problem = this->getParam<FEProblemBase *>("_fe_problem_base");
   MooseMesh & mesh = fe_problem->mesh();
   setupImageSampler(mesh);

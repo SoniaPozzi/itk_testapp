@@ -31,13 +31,8 @@
 
 #endif
 
-#include "itkImageFileWriter.h"
 #include "itkImageSeriesWriter.h"
 #include "itkRescaleIntensityImageFilter.h"
-
-
-
-// Software Guide : EndCodeSnippet
 
 
 // Forward declarations
@@ -96,10 +91,9 @@ private:
   std::vector<double> _voxel;
   std::vector<double> _ratios;
 
-/// Component to extract
+  /// Component to extract
 
   unsigned int _component;
-
 
   /// Bounding box for testing points
   MeshTools::BoundingBox _bounding_box;
@@ -110,7 +104,6 @@ private:
   /// Create a console stream object for this helper class
   ConsoleStream _is_console;
 
-
 protected:
 
   typedef itk::Image< WritePixelType, 3 > WriteImageType;
@@ -118,12 +111,10 @@ protected:
   typedef itk::RescaleIntensityImageFilter< ImageType, WriteImageType > RescaleFilterType;
 
   RescaleFilterType::Pointer rescaler;
-  Writer2Type::Pointer writer = Writer2Type::New();
   WriteImageType::Pointer scaledImage=WriteImageType::New();
 
- WriteImageType::IndexType pixelIndex;
- WriteImageType::PixelType pixelValue;
-
+  WriteImageType::IndexType pixelIndex;
+  WriteImageType::PixelType pixelValue;
 };
 
 #endif // IMAGESAMPLERDICOM_H
