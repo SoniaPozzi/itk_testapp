@@ -18,7 +18,7 @@
     # input files.
     type = ImageFunctionItk
     dicomDirectory=/Users/sonia/Projects/internshipINL/itk_testapp/tests/image_function/new_stack
-    file_base = shoulder
+    file_base = brain
   [../]
 []
 

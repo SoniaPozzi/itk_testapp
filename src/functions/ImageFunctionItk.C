@@ -37,6 +37,8 @@ ImageFunctionItk::~ImageFunctionItk() {}
 void
 ImageFunctionItk::initialSetup()
 {
+
+  std::cout<<"ImageFunctionItk::initialSetup"<<std::endl;
   FEProblemBase * fe_problem = this->getParam<FEProblemBase *>("_fe_problem_base");
   MooseMesh & mesh = fe_problem->mesh();
   setupImageSampler(mesh);
