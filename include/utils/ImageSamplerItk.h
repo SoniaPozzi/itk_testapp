@@ -33,6 +33,16 @@
 
 #include "itkImageSeriesWriter.h"
 #include "itkRescaleIntensityImageFilter.h"
+#include "itkImageFileReader.h"
+#include "itkImageFileWriter.h"
+#include "itkScalarToRGBPixelFunctor.h"
+#include "itkUnaryFunctorImageFilter.h"
+#include "itkVectorCastImageFilter.h"
+#include "itkVectorGradientAnisotropicDiffusionImageFilter.h"
+#include "itkWatershedImageFilter.h"
+#include "itkRescaleIntensityImageFilter.h"
+#include "itkScalarToRGBColormapImageFilter.h"
+#include "itkGradientMagnitudeImageFilter.h"
 
 
 // Forward declarations
@@ -74,7 +84,8 @@ protected:
    * Apply image re-scaling using the vtkImageShiftAndRescale object
    */
   void  ItkImageSampler(MooseMesh & mesh);
-  
+
+
 
 
 private:
@@ -106,15 +117,31 @@ private:
 
 protected:
 
+  typedef unsigned char WritePixelType;
   typedef itk::Image< WritePixelType, 3 > WriteImageType;
-  typedef itk::ImageFileWriter< WriteImageType >  Writer2Type;
+
+
   typedef itk::RescaleIntensityImageFilter< ImageType, WriteImageType > RescaleFilterType;
+
+  //typedef itk::Image<unsigned char, 3>       UnsignedCharImageType;
+  typedef itk::Image<float, 3>               FloatImageType;
+  typedef itk::WatershedImageFilter<FloatImageType> WatershedFilterType;
 
   RescaleFilterType::Pointer rescaler;
   WriteImageType::Pointer scaledImage=WriteImageType::New();
 
   WriteImageType::IndexType pixelIndex;
   WriteImageType::PixelType pixelValue;
+
+
+static void PerformSegmentation( FloatImageType::Pointer prova, const float threshold, const float level);
+
+
+  
+
 };
+
+
+
 
 #endif // IMAGESAMPLERDICOM_H

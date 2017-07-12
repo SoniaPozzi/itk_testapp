@@ -17,6 +17,38 @@
 #include "MooseApp.h"
 #include "ImageMeshItk.h"
 
+#include "itkImageFileReader.h"
+#include "itkImageFileWriter.h"
+
+#include "itkScalarToRGBPixelFunctor.h"
+#include "itkUnaryFunctorImageFilter.h"
+#include "itkVectorCastImageFilter.h"
+
+#include "itkGradientAnisotropicDiffusionImageFilter.h"
+#include "itkVectorMagnitudeImageFilter.h"
+#include "itkMorphologicalWatershedImageFilter.h"
+
+#include "itkWatershedImageFilter.h"
+#include "itkRescaleIntensityImageFilter.h"
+#include "itkScalarToRGBColormapImageFilter.h"
+#include "itkGradientMagnitudeImageFilter.h"
+ #include "itkTIFFImageIOFactory.h"
+
+#include "itkVectorCastImageFilter.h"
+
+
+
+  typedef itk::Image<unsigned char, 3>       UnsignedCharImageType;
+  typedef itk::Image<float, 3>               FloatImageType;
+    typedef itk::RGBPixel<unsigned char>       RGBPixelType;
+typedef itk::Image<RGBPixelType, 3>        RGBImageType;
+typedef itk::Image<itk::IdentifierType, 3> LabeledImageType;
+
+
+  typedef itk::WatershedImageFilter<FloatImageType> WatershedFilterType;
+  typedef itk::ScalarToRGBColormapImageFilter<LabeledImageType, RGBImageType> RGBFilterType;
+
+
 template <>
 InputParameters
 validParams<ImageSamplerItk>()
@@ -145,6 +177,75 @@ ImageSamplerItk::setupImageSampler(MooseMesh & mesh)
     scaledImage->SetOrigin( newOrigin);       
     _is_console  <<"DICOM Serie New Origin:   " << newOrigin<<std::endl<<std::endl;
 
+  // typedef itk::VectorCastImageFilter< RGBImageType, WriteImageType >  CastFilterType;
+  // CastFilterType::Pointer caster = CastFilterType::New();
+  //  caster->SetInput(scaledImage)
+
+  itk::TIFFImageIOFactory::RegisterOneFactory();
+typedef itk::ImageFileWriter< WriteImageType >  Writer2Type;
+Writer2Type::Pointer writer3 = Writer2Type::New();
+
+ writer3->SetFileName("outputFilenameFiltred.tiff" );
+     writer3->SetInput( scaledImage );
+ 
+      try
+      {
+      writer3->Update();
+      }
+   catch (itk::ExceptionObject & e)
+      {
+      std::cerr << e << std::endl;
+      mooseError("Exception in file writer");
+      }
+
+  // Parse arguments
+  std::string strThreshold = ".0025";
+  float threshold = 0.0;
+  std::stringstream ssThreshold;
+  ssThreshold << strThreshold;
+  ssThreshold >> threshold;
+ 
+  std::string strLevel ="0.25";
+  float level = 0.0;
+  std::stringstream ssLevel;
+  ssLevel << strLevel;
+  ssLevel >> level;
+ 
+  // Output arguments
+  std::cout << "Running with:" << std::endl
+            << "Threshold: " << threshold << std::endl
+            << "Level: " << level << std::endl;
+ 
+
+
+
+typedef itk::GradientAnisotropicDiffusionImageFilter<WriteImageType, WriteImageType > DiffusionFilterType;
+
+// DiffusionFilterType::Pointer diffusion = DiffusionFilterType::New();
+// diffusion->SetInput(scaledImage);
+//  diffusion->SetNumberOfIterations(4 ); 
+// diffusion->SetConductanceParameter( 1.0);
+//  diffusion->SetTimeStep(0.125);
+
+ // typedef itk::GradientMagnitudeImageFilter<UnsignedCharImageType, FloatImageType >  GradientMagnitudeImageFilterType;
+ typedef itk::GradientMagnitudeImageFilter<WriteImageType, FloatImageType >  GradientMagnitudeImageFilterType;
+ 
+  GradientMagnitudeImageFilterType::Pointer gradientMagnitudeImageFilter = GradientMagnitudeImageFilterType::New();
+  gradientMagnitudeImageFilter->SetInput(scaledImage);
+  gradientMagnitudeImageFilter->Update();
+
+  PerformSegmentation(gradientMagnitudeImageFilter->GetOutput(), threshold, level);
+ 
+  // Fixed parameters
+
+  PerformSegmentation(gradientMagnitudeImageFilter->GetOutput(), .00125, .125);
+  PerformSegmentation(gradientMagnitudeImageFilter->GetOutput(), .0025, .25);
+  //PerformSegmentation(gradientMagnitudeImageFilter->GetOutput(), .005, .5);
+  //PerformSegmentation(gradientMagnitudeImageFilter->GetOutput(), .0075, .75);
+  //PerformSegmentation(gradientMagnitudeImageFilter->GetOutput(), .009, .9);
+
+
+
     _is_console << "                        ...filtering finished" << std::endl;
 
     _bounding_box.min() = _origin;
@@ -204,3 +305,55 @@ ImageSamplerItk::sample(const Point & p)
 
 }
 
+void ImageSamplerItk::PerformSegmentation(FloatImageType::Pointer image, const float threshold, const float level)
+{
+  itk::TIFFImageIOFactory::RegisterOneFactory();
+
+ typedef itk::MorphologicalWatershedImageFilter<FloatImageType, LabeledImageType> MorphologicalWatershedFilterType;
+  MorphologicalWatershedFilterType::Pointer watershedFilter = MorphologicalWatershedFilterType::New();
+ // watershedFilter->SetThreshold(threshold);
+  watershedFilter->SetLevel(level);
+  watershedFilter->SetInput(image);  
+  watershedFilter->Update();
+
+
+  //  typedef itk:: WatershedImageFilter<FloatImageType> WatershedFilterType;
+  // WatershedFilterType::Pointer watershedFilter = WatershedFilterType::New();
+  // watershedFilter->SetThreshold(threshold);
+  // watershedFilter->SetLevel(level);
+  // watershedFilter->SetInput(image);  
+  // watershedFilter->Update();
+
+std::cout<<"sono arrivato H"<<std::endl;
+
+
+  typedef itk::ScalarToRGBColormapImageFilter<LabeledImageType, RGBImageType> RGBFilterType;
+  RGBFilterType::Pointer colormapImageFilter = RGBFilterType::New();
+  colormapImageFilter->SetInput(watershedFilter->GetOutput());
+  colormapImageFilter->SetColormap( RGBFilterType::Jet );
+  colormapImageFilter->Update();
+
+
+typedef itk::Functor::ScalarToRGBPixelFunctor<unsigned long> ColorMapFunctorType;
+  typedef itk::UnaryFunctorImageFilter<LabeledImageType, RGBImageType, ColorMapFunctorType> ColorMapFilterType;
+
+ColorMapFilterType::Pointer colormapper = ColorMapFilterType::New();
+colormapper->SetInput(watershedFilter->GetOutput());
+  colormapper->Update();
+
+
+
+std::cout<<"sono arrivato i"<<std::endl;
+
+ std::stringstream ss;
+  ss << "output_" << threshold << "_" << level << ".tiff";
+ 
+  typedef itk::ImageFileWriter<RGBImageType> FileWriterType2;
+  FileWriterType2::Pointer writer = FileWriterType2::New();
+  writer->SetFileName(ss.str());
+  writer->SetInput(colormapImageFilter->GetOutput());
+  writer->Update();
+
+std::cout<<"sono arrivato l"<<std::endl;
+ 
+}

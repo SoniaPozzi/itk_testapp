@@ -1,8 +1,8 @@
 [Mesh]
   type = ImageMeshItk
   dim = 3
-  file_base = shoulder
-  dicomDirectory=/Users/sonia/Projects/internshipINL/itk_testapp/tests/image_function/new_stack
+  file_base =brain
+  dicomDirectory=/Users/sonia/Projects/internshipINL/itk_testapp/tests/image_function/new_stack/
   cells_per_pixel_vector='0.25 0.25 4.0'
 
 []
@@ -18,8 +18,9 @@
     # when it is present.  This prevents duplicating information in
     # input files.
     type = ImageFunctionItk
-    dicomDirectory=/Users/sonia/Projects/internshipINL/itk_testapp/tests/image_function/new_stack
-    file_base = shoulder
+    dicomDirectory=/Users/sonia/Projects/internshipINL/itk_testapp/tests/image_function/new_stack/
+    file_base =brain
+
   [../]
 []
 
