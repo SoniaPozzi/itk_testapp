@@ -17,36 +17,37 @@
 #include "MooseApp.h"
 #include "ImageMeshItk.h"
 
+#include "itkGrayscaleFillholeImageFilter.h"
+#include "itkGradientAnisotropicDiffusionImageFilter.h"
+
+#include "itkCannyEdgeDetectionImageFilter.h"  
 #include "itkImageFileReader.h"
 #include "itkImageFileWriter.h"
-
-#include "itkScalarToRGBPixelFunctor.h"
-#include "itkUnaryFunctorImageFilter.h"
-#include "itkVectorCastImageFilter.h"
-
-#include "itkGradientAnisotropicDiffusionImageFilter.h"
-#include "itkVectorMagnitudeImageFilter.h"
-#include "itkMorphologicalWatershedImageFilter.h"
-
-#include "itkWatershedImageFilter.h"
+#include "itkCastImageFilter.h"
 #include "itkRescaleIntensityImageFilter.h"
-#include "itkScalarToRGBColormapImageFilter.h"
-#include "itkGradientMagnitudeImageFilter.h"
- #include "itkTIFFImageIOFactory.h"
-
-#include "itkVectorCastImageFilter.h"
 
 
+#include <iostream>
+#include "itkCannyEdgeDetectionImageFilter.h"
+#include "itkImageFileReader.h"
+#include "itkImageFileWriter.h"
+#include "itkSimpleFilterWatcher.h"
+#include "itkMath.h"
+#include "itkTestingMacros.h"
 
-  typedef itk::Image<unsigned char, 3>       UnsignedCharImageType;
-  typedef itk::Image<float, 3>               FloatImageType;
-    typedef itk::RGBPixel<unsigned char>       RGBPixelType;
-typedef itk::Image<RGBPixelType, 3>        RGBImageType;
-typedef itk::Image<itk::IdentifierType, 3> LabeledImageType;
+#include "itkThresholdImageFilter.h"
+#include "itkConnectedThresholdImageFilter.h"
+#include "itkCurvatureFlowImageFilter.h"
+#include "itkConnectedThresholdImageFilter.h"
+
+#include "itkImage.h"
+#include "itkImageFileWriter.h"
+#include "itkConnectedThresholdImageFilter.h"
+#include "itkCastImageFilter.h"
 
 
-  typedef itk::WatershedImageFilter<FloatImageType> WatershedFilterType;
-  typedef itk::ScalarToRGBColormapImageFilter<LabeledImageType, RGBImageType> RGBFilterType;
+typedef   float           FloatPixelType;
+  typedef itk::Image< FloatPixelType, 3 > FloatImageType;
 
 
 template <>
@@ -145,22 +146,17 @@ ImageSamplerItk::setupImageSampler(MooseMesh & mesh)
     _is_console << "                            ...image read!" << std::endl;
     _is_console << "Applying the filters...    " << std::endl<<std::endl;
 
-    rescaler = RescaleFilterType::New();
-    rescaler->SetOutputMinimum(   0 );
-    rescaler->SetOutputMaximum( 255 );
-    rescaler->SetInput( reader->GetOutput() );
-    rescaler->Update();
-
-    scaledImage=(rescaler->GetOutput());
+    scaledImage=(reader->GetOutput());
     scaledImage->SetSpacing( inputSpacing );
     scaledImage->GetLargestPossibleRegion();
+    scaledImage->Update();
 
     for (unsigned int i = 0; i < 3; ++i)
     {  
      _voxel.push_back(_physical_dims(i) / (imageSize[i]));
     }
 
-    WriteImageType::SpacingType spacing2;
+   ImageType::SpacingType spacing2;
     
     spacing2[0] = _voxel[0]; // spacing along X
     spacing2[1] = _voxel[1];
@@ -168,7 +164,7 @@ ImageSamplerItk::setupImageSampler(MooseMesh & mesh)
     
     scaledImage->SetSpacing(spacing2);
 
-    WriteImageType::PointType newOrigin;
+    ImageType::PointType newOrigin;
     
     newOrigin[0] = _origin(0); // spacing along X
     newOrigin[1] = _origin(1);
@@ -177,15 +173,90 @@ ImageSamplerItk::setupImageSampler(MooseMesh & mesh)
     scaledImage->SetOrigin( newOrigin);       
     _is_console  <<"DICOM Serie New Origin:   " << newOrigin<<std::endl<<std::endl;
 
-  // typedef itk::VectorCastImageFilter< RGBImageType, WriteImageType >  CastFilterType;
-  // CastFilterType::Pointer caster = CastFilterType::New();
-  //  caster->SetInput(scaledImage)
+
+
+
+
+  typedef itk::GrayscaleFillholeImageFilter<ImageType,ImageType>  FillholeFilterType;
+  typename FillholeFilterType::Pointer  fillhole = FillholeFilterType::New();
+
+  fillhole->SetInput( scaledImage );
+  fillhole->Update();
+
+
+  typedef itk::ThresholdImageFilter<ImageType> ThresholdFilterType;
+  typename ThresholdFilterType::Pointer  thresholdfilter = ThresholdFilterType::New();
+
+
+  thresholdfilter->SetInput(fillhole->GetOutput());
+  thresholdfilter->SetOutsideValue(255);
+
+  thresholdfilter->ThresholdAbove(100);
+  thresholdfilter->Update();
+
+
+
+typedef itk::GradientMagnitudeImageFilter<ImageType, FloatImageType >  GradientMagnitudeImageFilterType;
+ 
+  GradientMagnitudeImageFilterType::Pointer gradientMagnitudeImageFilter2 = GradientMagnitudeImageFilterType::New();
+  gradientMagnitudeImageFilter2->SetInput(thresholdfilter->GetOutput()   );
+  gradientMagnitudeImageFilter2->Update();
+
+
+typedef itk::CurvatureFlowImageFilter< ImageType, FloatImageType > CurvatureFlowImageFilterType;
+CurvatureFlowImageFilterType::Pointer smoothing = CurvatureFlowImageFilterType::New();
+
+typedef itk::ConnectedThresholdImageFilter<FloatImageType,FloatImageType > ConnectedFilterType;
+ConnectedFilterType::Pointer connectedThreshold = ConnectedFilterType::New();
+
+ typedef itk::CastImageFilter< FloatImageType, FloatImageType >  CastingFilterType;
+CastingFilterType::Pointer caster = CastingFilterType::New();
+
+
+
+
+smoothing->SetNumberOfIterations( 5 );
+ smoothing->SetTimeStep( 0.125 );
+caster->SetInput( connectedThreshold->GetOutput() );
+
+ connectedThreshold->SetLower( 0.0 ); 
+ connectedThreshold->SetUpper( 2550.0 );
+connectedThreshold->SetReplaceValue( 255 );
+
+ImageType::IndexType  index;
+  index[0]=60;
+  index[0]=116;
+connectedThreshold->SetSeed( index);
+
+smoothing->SetInput( thresholdfilter->GetOutput() ); 
+connectedThreshold->SetInput( smoothing->GetOutput() ); 
+
 
   itk::TIFFImageIOFactory::RegisterOneFactory();
-typedef itk::ImageFileWriter< WriteImageType >  Writer2Type;
-Writer2Type::Pointer writer3 = Writer2Type::New();
+  typedef itk::ImageFileWriter< FloatImageType >  Writer2Type2;
+  Writer2Type2::Pointer writer2 = Writer2Type2::New();
 
- writer3->SetFileName("outputFilenameFiltred.tiff" );
+ writer2->SetFileName("outputFilenameFloat.tiff" );
+     writer2->SetInput( gradientMagnitudeImageFilter2->GetOutput() );
+ 
+      try
+      {
+      writer2->Update();
+      }
+   catch (itk::ExceptionObject & e)
+      {
+      std::cerr << e << std::endl;
+      mooseError("Exception in file writer");
+      }
+
+
+
+
+  itk::TIFFImageIOFactory::RegisterOneFactory();
+  typedef itk::ImageFileWriter< ImageType >  Writer2Type;
+  Writer2Type::Pointer writer3 = Writer2Type::New();
+
+ writer3->SetFileName("outputFilename.tiff" );
      writer3->SetInput( scaledImage );
  
       try
@@ -199,13 +270,13 @@ Writer2Type::Pointer writer3 = Writer2Type::New();
       }
 
   // Parse arguments
-  std::string strThreshold = ".0025";
+  std::string strThreshold = ".009";
   float threshold = 0.0;
   std::stringstream ssThreshold;
   ssThreshold << strThreshold;
   ssThreshold >> threshold;
  
-  std::string strLevel ="0.25";
+  std::string strLevel ="0.9";
   float level = 0.0;
   std::stringstream ssLevel;
   ssLevel << strLevel;
@@ -219,20 +290,25 @@ Writer2Type::Pointer writer3 = Writer2Type::New();
 
 
 
-typedef itk::GradientAnisotropicDiffusionImageFilter<WriteImageType, WriteImageType > DiffusionFilterType;
+// typedef itk::GradientAnisotropicDiffusionImageFilter<ImageType, ImageType > DiffusionFilterType;
 
 // DiffusionFilterType::Pointer diffusion = DiffusionFilterType::New();
-// diffusion->SetInput(scaledImage);
+// diffusion->SetInput(gradienMagnitudeFilter->GetOutput() );
 //  diffusion->SetNumberOfIterations(4 ); 
 // diffusion->SetConductanceParameter( 1.0);
 //  diffusion->SetTimeStep(0.125);
 
  // typedef itk::GradientMagnitudeImageFilter<UnsignedCharImageType, FloatImageType >  GradientMagnitudeImageFilterType;
- typedef itk::GradientMagnitudeImageFilter<WriteImageType, FloatImageType >  GradientMagnitudeImageFilterType;
+ //typedef itk::GradientMagnitudeImageFilter<ImageType, FloatImageType >  GradientMagnitudeImageFilterType;
  
   GradientMagnitudeImageFilterType::Pointer gradientMagnitudeImageFilter = GradientMagnitudeImageFilterType::New();
-  gradientMagnitudeImageFilter->SetInput(scaledImage);
+  gradientMagnitudeImageFilter->SetInput(thresholdfilter->GetOutput()   );
   gradientMagnitudeImageFilter->Update();
+ // gradientMagnitudeImageFilter->SetUsePrincipleComponents(on);
+
+
+
+
 
   PerformSegmentation(gradientMagnitudeImageFilter->GetOutput(), threshold, level);
  
@@ -240,11 +316,11 @@ typedef itk::GradientAnisotropicDiffusionImageFilter<WriteImageType, WriteImageT
 
   PerformSegmentation(gradientMagnitudeImageFilter->GetOutput(), .00125, .125);
   PerformSegmentation(gradientMagnitudeImageFilter->GetOutput(), .0025, .25);
-  //PerformSegmentation(gradientMagnitudeImageFilter->GetOutput(), .005, .5);
-  //PerformSegmentation(gradientMagnitudeImageFilter->GetOutput(), .0075, .75);
-  //PerformSegmentation(gradientMagnitudeImageFilter->GetOutput(), .009, .9);
+  PerformSegmentation(gradientMagnitudeImageFilter->GetOutput(), .005, .5);
+  PerformSegmentation(gradientMagnitudeImageFilter->GetOutput(), .0075, .75);
+  PerformSegmentation(gradientMagnitudeImageFilter->GetOutput(), .009, .9);
 
-
+//
 
     _is_console << "                        ...filtering finished" << std::endl;
 

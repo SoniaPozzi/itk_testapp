@@ -32,7 +32,7 @@
 #endif
 
 #include "itkImageSeriesWriter.h"
-#include "itkRescaleIntensityImageFilter.h"
+
 #include "itkImageFileReader.h"
 #include "itkImageFileWriter.h"
 #include "itkScalarToRGBPixelFunctor.h"
@@ -43,6 +43,13 @@
 #include "itkRescaleIntensityImageFilter.h"
 #include "itkScalarToRGBColormapImageFilter.h"
 #include "itkGradientMagnitudeImageFilter.h"
+#include "itkGradientAnisotropicDiffusionImageFilter.h"
+#include "itkVectorMagnitudeImageFilter.h"
+#include "itkMorphologicalWatershedImageFilter.h"
+ #include "itkTIFFImageIOFactory.h"
+
+#include "itkGradientMagnitudeRecursiveGaussianImageFilter.h"
+
 
 
 // Forward declarations
@@ -117,21 +124,19 @@ private:
 
 protected:
 
-  typedef unsigned char WritePixelType;
-  typedef itk::Image< WritePixelType, 3 > WriteImageType;
 
-
-  typedef itk::RescaleIntensityImageFilter< ImageType, WriteImageType > RescaleFilterType;
-
-  //typedef itk::Image<unsigned char, 3>       UnsignedCharImageType;
   typedef itk::Image<float, 3>               FloatImageType;
+  typedef itk::RGBPixel<unsigned char>       RGBPixelType;
+  typedef itk::Image<RGBPixelType, 3>        RGBImageType;
+  typedef itk::Image<itk::IdentifierType, 3> LabeledImageType;
+  
   typedef itk::WatershedImageFilter<FloatImageType> WatershedFilterType;
+  typedef itk::ScalarToRGBColormapImageFilter<LabeledImageType, RGBImageType> RGBFilterType;
+   
+  ImageType::Pointer scaledImage=ImageType::New();
 
-  RescaleFilterType::Pointer rescaler;
-  WriteImageType::Pointer scaledImage=WriteImageType::New();
-
-  WriteImageType::IndexType pixelIndex;
-  WriteImageType::PixelType pixelValue;
+  ImageType::IndexType pixelIndex;
+  ImageType::PixelType pixelValue;
 
 
 static void PerformSegmentation( FloatImageType::Pointer prova, const float threshold, const float level);
