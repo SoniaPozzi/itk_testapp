@@ -126,12 +126,12 @@ private:
 protected:
 
 
-typedef itk::ThresholdImageFilter< ImageType >  FilterType;
+typedef itk::ThresholdImageFilter< InternalImageType >  FilterType;
 FilterType::Pointer filter = FilterType::New();
 
 
 typedef unsigned char                    OutputPixelType;
-typedef itk::Image<OutputPixelType, 3 > OutputImageType;
+typedef itk::Image<OutputPixelType, 3 >  OutputImageType;
  typedef itk::RGBPixel<unsigned char>       RGBPixelType;
   typedef itk::Image<RGBPixelType, 3>        RGBImageType;
   typedef itk::Image<itk::IdentifierType, 3> LabeledImageType;
@@ -139,20 +139,20 @@ typedef itk::Image<OutputPixelType, 3 > OutputImageType;
 
 
   
-  typedef itk::WatershedImageFilter<PixelType> WatershedFilterType;
+ // typedef itk::WatershedImageFilter<PixelType> WatershedFilterType;
   typedef itk::ScalarToRGBColormapImageFilter<LabeledImageType, RGBImageType> RGBFilterType;
    
 
-  typedef itk::RescaleIntensityImageFilter< ImageType, OutputImageType > RescaleFilterType;
+  typedef itk::RescaleIntensityImageFilter< InternalImageType, OutputImageType > RescaleFilterType;
 
   RescaleFilterType::Pointer rescaler;
-  ImageType::Pointer scaledImage=ImageType::New();
+  InternalImageType::Pointer scaledImage=InternalImageType::New();
 
-  ImageType::IndexType pixelIndex;
-  ImageType::PixelType pixelValue;
+  InternalImageType::IndexType pixelIndex;
+  InternalImageType::PixelType pixelValue;
 
 
-static void PerformSegmentation( ImageType::Pointer prova, const float threshold, const float level);
+//static void PerformSegmentation( InternalImageType::Pointer prova, const float threshold, const float level);
 
 
   

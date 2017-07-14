@@ -53,13 +53,6 @@
 #include "itkSliceBySliceImageFilter.h"
 
 
-
-
-
-typedef   float           FloatPixelType;
-  typedef itk::Image< FloatPixelType, 3 > FloatImageType;
-
-
 template <>
 InputParameters
 validParams<ImageSamplerItk>()
@@ -97,7 +90,7 @@ ImageSamplerItk::ImageSamplerItk(const InputParameters & parameters)
 
 void
 ImageSamplerItk::setupImageSampler(MooseMesh & mesh)
-{
+{itk::TIFFImageIOFactory::RegisterOneFactory();
 
 
   libmesh_ignore(mesh);
@@ -149,26 +142,42 @@ ImageSamplerItk::setupImageSampler(MooseMesh & mesh)
     _is_console << "Read...     " << std::endl<<std::endl;
     imageSize =reader->GetOutput()->GetLargestPossibleRegion().GetSize();
     _is_console  <<"DICOM Serie Dimension:    " << imageSize<<std::endl;
-    const ImageType::SpacingType& inputSpacing=reader->GetOutput()->GetSpacing();
+    const InternalImageType::SpacingType& inputSpacing=reader->GetOutput()->GetSpacing();
     _is_console <<"DICOM Serie Spacing:      " << inputSpacing << std::endl;
-    const ImageType::PointType & origin = reader->GetOutput()->GetOrigin();
+    const InternalImageType::PointType & origin = reader->GetOutput()->GetOrigin();
     _is_console  <<"DICOM Serie Origin:       "<<  origin << std::endl;
 
     _is_console << "                            ...image read!" << std::endl;
     _is_console << "Applying the filters...    " << std::endl<<std::endl;
 
- 
-    scaledImage=(reader->GetOutput());
+
+
+
+ typedef itk::CastImageFilter< ShortImageType, InternalImageType > CastFilterType;
+
+   CastFilterType::Pointer castFilter = CastFilterType::New();
+   castFilter->SetInput( reader->GetOutput() );
+
+
+ typedef itk::RescaleIntensityImageFilter<   InternalImageType, InternalImageType > RescaleFilterType;
+  RescaleFilterType::Pointer rescaler = RescaleFilterType::New();
+  rescaler->SetOutputMinimum(   0 );
+  rescaler->SetOutputMaximum( 255 ); //255 means white
+  rescaler->SetInput(castFilter->GetOutput() );
+
+
+
+    scaledImage=rescaler->GetOutput();
     scaledImage->SetSpacing( inputSpacing );
     scaledImage->GetLargestPossibleRegion();
-    scaledImage->Update();
+    scaledImage->Update(); 
 
     for (unsigned int i = 0; i < 3; ++i)
     {  
      _voxel.push_back(_physical_dims(i) / (imageSize[i]));
     }
 
-   ImageType::SpacingType spacing2;
+   InternalImageType::SpacingType spacing2;
     
     spacing2[0] = _voxel[0]; // spacing along X
     spacing2[1] = _voxel[1];
@@ -176,7 +185,7 @@ ImageSamplerItk::setupImageSampler(MooseMesh & mesh)
     
     scaledImage->SetSpacing(spacing2);
 
-    ImageType::PointType newOrigin;
+    InternalImageType::PointType newOrigin;
     
     newOrigin[0] = _origin(0); // spacing along X
     newOrigin[1] = _origin(1);
@@ -190,35 +199,38 @@ ImageSamplerItk::setupImageSampler(MooseMesh & mesh)
      
 
 
-typedef itk::GrayscaleFillholeImageFilter<ImageType,ImageType>  FillholeFilterType;
+typedef itk::GrayscaleFillholeImageFilter<InternalImageType,InternalImageType>  FillholeFilterType;
 FillholeFilterType::Pointer  fillhole = FillholeFilterType::New();
 
 
 
-typedef itk::CurvatureFlowImageFilter< ImageType, ImageType > CurvatureFlowImageFilterType;
+typedef itk::CurvatureFlowImageFilter< InternalImageType, InternalImageType > CurvatureFlowImageFilterType;
 CurvatureFlowImageFilterType::Pointer smoothing = CurvatureFlowImageFilterType::New();
 
-typedef itk::ConnectedThresholdImageFilter< ImageType, ImageType > ConnectedFilterType;
+typedef itk::ConnectedThresholdImageFilter< InternalImageType, InternalImageType > ConnectedFilterType;
 ConnectedFilterType::Pointer connectedThreshold = ConnectedFilterType::New();
 
-typedef itk::CastImageFilter< ImageType,OutputImageType > CastFilterType;
-CastFilterType::Pointer caster = CastFilterType::New();
-CastFilterType::Pointer caster2 = CastFilterType::New();
+ typedef itk::CastImageFilter< ShortImageType, OutputImageType > CastFilterType2;
+CastFilterType2::Pointer caster3 = CastFilterType2::New();
+CastFilterType2::Pointer caster2 = CastFilterType2::New();
+
+ typedef itk::CastImageFilter< InternalImageType, OutputImageType > CastFilterType3;
+CastFilterType3::Pointer caster4 = CastFilterType3::New();
+
 
 
 // smoothing->SetNumberOfIterations( 0 ); smoothing->SetTimeStep( 0.125 );
 
 // smoothing->SetInput( reader->GetOutput() );
 
-   ImageType::SizeType size2 =scaledImage->GetLargestPossibleRegion().GetSize();
-
-             ImageType::IndexType index2 =scaledImage->GetLargestPossibleRegion().GetIndex();
 
 
+   InternalImageType::SizeType size2 =castFilter->GetOutput()->GetLargestPossibleRegion().GetSize();
 
+  InternalImageType::IndexType index2 =castFilter->GetOutput()->GetLargestPossibleRegion().GetIndex();
 
-             ImageType::PixelType maxValue;
-             ImageType::PixelType minValue;
+  InternalImageType::PixelType maxValue;
+  InternalImageType::PixelType minValue;
 
              for(int i = index2[0]; i<size2[0]; i++)
 
@@ -228,18 +240,20 @@ CastFilterType::Pointer caster2 = CastFilterType::New();
 
                     {
 
-                           ImageType::IndexType currentIndex;
+                           InternalImageType::IndexType currentIndex;
 
                            currentIndex[0] = i;
 
                            currentIndex[1] = j;
 
-                           ImageType::PixelType currentValue =scaledImage->GetPixel(currentIndex);
+                           InternalImageType::PixelType currentValue =castFilter->GetOutput()->GetPixel(currentIndex);
 
                            if(currentValue>maxValue)
 
                            {
 
+
+//std::cout<<"i: "<<i<<"j: "<<j<<std::endl;
                                   maxValue = currentValue;
 
                            }
@@ -260,30 +274,53 @@ CastFilterType::Pointer caster2 = CastFilterType::New();
              std::cout<<"maxValue "<<maxValue<<std::endl;
              std::cout<<"minValue "<<minValue<<std::endl;
 
+// connectedThreshold->SetInput(scaledImage); 
+// connectedThreshold->SetLower(80 ); 
+// connectedThreshold->SetUpper( 130 );
+// connectedThreshold->SetReplaceValue( 255 ); //255=white means selected
+// connectedThreshold->SetInput( scaledImage ); 
 
-  fillhole->SetInput( scaledImage );
-  fillhole->Update();
 
 connectedThreshold->SetInput(scaledImage); 
-connectedThreshold->SetLower(0 ); 
-connectedThreshold->SetUpper( 700 );
-connectedThreshold->SetReplaceValue( 255 );
+connectedThreshold->SetLower(90 ); 
+connectedThreshold->SetUpper( 112 );
+connectedThreshold->SetReplaceValue( 255 ); //255=white means selected
 connectedThreshold->SetInput( scaledImage ); 
 
 
 
-ImageType::IndexType  index;
-  index[0]=101;
-  index[1]=177;
-  index[2]=4;
+InternalImageType::IndexType  index;
+
+
+// //shoulder 
+//    index[0]=142;
+//    index[1]=138;
+//    index[2]=4;
+
+
+// //shoulder from above
+//    index[0]=278;
+//    index[1]=230;
+//    index[2]=4;
+
+//brain 1 
+  // index[0]=101;
+  // index[1]=177;
+  // index[2]=4;
+
+
+//brain 2 
+  index[0]=60;
+  index[1]=116;
+  index[2]=8;
 
 std::cout << "Seed index = " << index << std::endl;
 connectedThreshold->SetSeed(index);
 connectedThreshold->Update();
 
 
-caster->SetInput(connectedThreshold->GetOutput());
-caster->Update();
+caster4->SetInput(connectedThreshold->GetOutput());
+caster4->Update();
 
 imageSize =connectedThreshold->GetOutput()->GetLargestPossibleRegion().GetSize();   
 std::cout<<imageSize<<": that one was ImageSize"<<std::endl;
@@ -296,85 +333,40 @@ std::cout<<"pixel_value : "<<static_cast<unsigned>(pixel_value) <<std::endl;
 pixel_value= connectedThreshold->GetOutput()->GetPixel( index ); 
 
 std::cout<<"pixel_value : "<<static_cast<unsigned>(pixel_value) <<std::endl;
-caster2->SetInput( scaledImage);
 
-
-//caster->SetInput( connectedThreshold->GetOutput() );
-// writer->SetInput( caster->GetOutput() );
-
- //typedef itk::ThresholdImageFilter< ImageType >  FilterType;
- //FilterType::Pointer filter = FilterType::New();
-  // filter->SetInput( fillhole->GetOutput() );
-  // filter->SetOutsideValue( 0 );
-  // filter->ThresholdBelow( 180 );
-  // filter->ThresholdAbove( 180 );
-  // filter->Update();
-
-
-
-  // typedef itk::ThresholdImageFilter<InternalImageType> ThresholdFilterType;
-  // typename ThresholdFilterType::Pointer  thresholdfilter = ThresholdFilterType::New();
-
-
-  // thresholdfilter->SetInput(fillhole->GetOutput());
-  // thresholdfilter->SetOutsideValue(255);
-
-  // thresholdfilter->ThresholdAbove(100);
-  // thresholdfilter->Update();
+caster4->SetInput(connectedThreshold->GetOutput());
+caster4->Update();
 
 
 
 
 
 
-typedef itk::GradientMagnitudeImageFilter<ImageType, ImageType >  GradientMagnitudeImageFilterType;
+// typedef itk::GradientMagnitudeImageFilter<InternalImageType, InternalImageType >  GradientMagnitudeImageFilterType;
+
+
+//   itk::TIFFImageIOFactory::RegisterOneFactory();
+//   typedef itk::ImageFileWriter< InternalImageType >  Writer2Type2;
+//   Writer2Type2::Pointer writer2 = Writer2Type2::New();
+
+//  writer2->SetFileName("outputFilenameFloat2.tiff" );
+//      writer2->SetInput( connectedThreshold->GetOutput() );
  
-//   GradientMagnitudeImageFilterType::Pointer gradientMagnitudeImageFilter2 = GradientMagnitudeImageFilterType::New();
-//   gradientMagnitudeImageFilter2->SetInput(thresholdfilter->GetOutput()   );
-//   gradientMagnitudeImageFilter2->Update();
-
-
-// connectedThreshold->SetLower( 100.0 ); 
-// connectedThreshold->SetUpper( 230.0 );
-// connectedThreshold->SetReplaceValue( 255 );
-// connectedThreshold->SetInput( gradientMagnitudeImageFilter2->GetOutput() ); 
-
-// InternalImageType::IndexType  index;
-//   index[0]=60;
-//   index[0]=116;
-// connectedThreshold->SetSeed( index);
-
-
-
- // rescaler = RescaleFilterType::New();
- //  rescaler->SetOutputMinimum(   0 );
- // rescaler->SetOutputMaximum( 255 );
- // rescaler->SetInput( connectedThreshold->GetOutput() );
- //  rescaler->Update();
-
-
-  itk::TIFFImageIOFactory::RegisterOneFactory();
-  typedef itk::ImageFileWriter< ImageType >  Writer2Type2;
-  Writer2Type2::Pointer writer2 = Writer2Type2::New();
-
- writer2->SetFileName("outputFilenameFloat2.tiff" );
-     writer2->SetInput( connectedThreshold->GetOutput() );
- 
-      try
-      {
-      writer2->Update();
-      }
-   catch (itk::ExceptionObject & e)
-      {
-      std::cerr << e << std::endl;
-      mooseError("Exception in file writer");
-      }
+//       try
+//       {
+//       writer2->Update();
+//       }
+//    catch (itk::ExceptionObject & e)
+//       {
+//       std::cerr << e << std::endl;
+//       mooseError("Exception in file writer");
+//       }
 
   typedef itk::ImageFileWriter< OutputImageType >  WriterType;
   WriterType::Pointer writer3 = WriterType::New();
 
     writer3->SetFileName("outputFilename.tiff" );
-     writer3->SetInput( caster->GetOutput() );
+     writer3->SetInput( caster4->GetOutput() );
  
       try
       {
@@ -386,59 +378,7 @@ typedef itk::GradientMagnitudeImageFilter<ImageType, ImageType >  GradientMagnit
       mooseError("Exception in file writer");
       }
 
-  // Parse arguments
-  std::string strThreshold = ".009";
-  float threshold = 0.0;
-  std::stringstream ssThreshold;
-  ssThreshold << strThreshold;
-  ssThreshold >> threshold;
- 
-  std::string strLevel ="0.9";
-  float level = 0.0;
-  std::stringstream ssLevel;
-  ssLevel << strLevel;
-  ssLevel >> level;
- 
-  // Output arguments
-  std::cout << "Running with:" << std::endl
-            << "Threshold: " << threshold << std::endl
-            << "Level: " << level << std::endl;
- 
-
-
-
-// typedef itk::GradientAnisotropicDiffusionImageFilter<ImageType, ImageType > DiffusionFilterType;
-
-// DiffusionFilterType::Pointer diffusion = DiffusionFilterType::New();
-// diffusion->SetInput(gradienMagnitudeFilter->GetOutput() );
-//  diffusion->SetNumberOfIterations(4 ); 
-// diffusion->SetConductanceParameter( 1.0);
-//  diffusion->SetTimeStep(0.125);
-
- // typedef itk::GradientMagnitudeImageFilter<UnsignedCharImageType, FloatImageType >  GradientMagnitudeImageFilterType;
- //typedef itk::GradientMagnitudeImageFilter<ImageType, FloatImageType >  GradientMagnitudeImageFilterType;
- 
- //  GradientMagnitudeImageFilterType::Pointer gradientMagnitudeImageFilter = GradientMagnitudeImageFilterType::New();
- //  gradientMagnitudeImageFilter->SetInput(thresholdfilter->GetOutput()   );
- //  gradientMagnitudeImageFilter->Update();
- // // gradientMagnitudeImageFilter->SetUsePrincipleComponents(on);
-
-
-
-
-
- //  PerformSegmentation(gradientMagnitudeImageFilter->GetOutput(), threshold, level);
- 
- //  // Fixed parameters
-
- //  PerformSegmentation(gradientMagnitudeImageFilter->GetOutput(), .00125, .125);
- //  PerformSegmentation(gradientMagnitudeImageFilter->GetOutput(), .0025, .25);
- //  PerformSegmentation(gradientMagnitudeImageFilter->GetOutput(), .005, .5);
- //  PerformSegmentation(gradientMagnitudeImageFilter->GetOutput(), .0075, .75);
- //  PerformSegmentation(gradientMagnitudeImageFilter->GetOutput(), .009, .9);
-
-//
-
+  
     _is_console << "                        ...filtering finished" << std::endl;
 
     _bounding_box.min() = _origin;
@@ -508,55 +448,3 @@ ImageSamplerItk::sample(const Point & p)
 
 }
 
-void ImageSamplerItk::PerformSegmentation(ImageType::Pointer image, const float threshold, const float level)
-{
-  itk::TIFFImageIOFactory::RegisterOneFactory();
-
-//  typedef itk::MorphologicalWatershedImageFilter<FloatImageType, LabeledImageType> MorphologicalWatershedFilterType;
-//   MorphologicalWatershedFilterType::Pointer watershedFilter = MorphologicalWatershedFilterType::New();
-//  // watershedFilter->SetThreshold(threshold);
-//   watershedFilter->SetLevel(level);
-//   watershedFilter->SetInput(image);  
-//   watershedFilter->Update();
-
-
-//   //  typedef itk:: WatershedImageFilter<FloatImageType> WatershedFilterType;
-//   // WatershedFilterType::Pointer watershedFilter = WatershedFilterType::New();
-//   // watershedFilter->SetThreshold(threshold);
-//   // watershedFilter->SetLevel(level);
-//   // watershedFilter->SetInput(image);  
-//   // watershedFilter->Update();
-
-// std::cout<<"sono arrivato H"<<std::endl;
-
-
-//   typedef itk::ScalarToRGBColormapImageFilter<LabeledImageType, RGBImageType> RGBFilterType;
-//   RGBFilterType::Pointer colormapImageFilter = RGBFilterType::New();
-//   colormapImageFilter->SetInput(watershedFilter->GetOutput());
-//   colormapImageFilter->SetColormap( RGBFilterType::Jet );
-//   colormapImageFilter->Update();
-
-
-// typedef itk::Functor::ScalarToRGBPixelFunctor<unsigned long> ColorMapFunctorType;
-//   typedef itk::UnaryFunctorImageFilter<LabeledImageType, RGBImageType, ColorMapFunctorType> ColorMapFilterType;
-
-// ColorMapFilterType::Pointer colormapper = ColorMapFilterType::New();
-// colormapper->SetInput(watershedFilter->GetOutput());
-//   colormapper->Update();
-
-
-
-// std::cout<<"sono arrivato i"<<std::endl;
-
-//  std::stringstream ss;
-//   ss << "output_" << threshold << "_" << level << ".tiff";
- 
-//   typedef itk::ImageFileWriter<RGBImageType> FileWriterType2;
-//   FileWriterType2::Pointer writer = FileWriterType2::New();
-//   writer->SetFileName(ss.str());
-//   writer->SetInput(colormapImageFilter->GetOutput());
-//   writer->Update();
-
-// std::cout<<"sono arrivato l"<<std::endl;
- 
-}
