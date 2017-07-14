@@ -50,7 +50,6 @@
 #include "itkImageFileReader.h"
 #include "itkImageFileWriter.h"
 #include "itkCastImageFilter.h"
-#include "itkSliceBySliceImageFilter.h"
 
 
 template <>
@@ -90,8 +89,8 @@ ImageSamplerItk::ImageSamplerItk(const InputParameters & parameters)
 
 void
 ImageSamplerItk::setupImageSampler(MooseMesh & mesh)
-{itk::TIFFImageIOFactory::RegisterOneFactory();
-
+{
+  itk::TIFFImageIOFactory::RegisterOneFactory();
 
   libmesh_ignore(mesh);
   libmesh_ignore(_is_pars);
@@ -141,156 +140,116 @@ ImageSamplerItk::setupImageSampler(MooseMesh & mesh)
   {
     _is_console << "Read...     " << std::endl<<std::endl;
     imageSize =reader->GetOutput()->GetLargestPossibleRegion().GetSize();
-    _is_console  <<"DICOM Serie Dimension:    " << imageSize<<std::endl;
+    _is_console  <<"   DICOM Serie Dimension:    " << imageSize<<std::endl;
     const InternalImageType::SpacingType& inputSpacing=reader->GetOutput()->GetSpacing();
-    _is_console <<"DICOM Serie Spacing:      " << inputSpacing << std::endl;
+    _is_console <<"   DICOM Serie Spacing:      " << inputSpacing << std::endl;
     const InternalImageType::PointType & origin = reader->GetOutput()->GetOrigin();
-    _is_console  <<"DICOM Serie Origin:       "<<  origin << std::endl;
+    _is_console  <<"   DICOM Serie Origin:       "<<  origin << std::endl;
 
-    _is_console << "                            ...image read!" << std::endl;
     _is_console << "Applying the filters...    " << std::endl<<std::endl;
 
 
+typedef itk::CastImageFilter< ShortImageType, InternalImageType > CastFilterType;
 
+CastFilterType::Pointer castFilter = CastFilterType::New();
+castFilter->SetInput( reader->GetOutput() );
 
- typedef itk::CastImageFilter< ShortImageType, InternalImageType > CastFilterType;
+InternalImageType::SizeType size2 =castFilter->GetOutput()->GetLargestPossibleRegion().GetSize();
+InternalImageType::IndexType index2 =castFilter->GetOutput()->GetLargestPossibleRegion().GetIndex();
 
-   CastFilterType::Pointer castFilter = CastFilterType::New();
-   castFilter->SetInput( reader->GetOutput() );
+InternalImageType::PixelType maxValue;
+InternalImageType::PixelType minValue;
 
+ for(int i = index2[0]; i<size2[0]; i++)
+ {
+        for(int j = index2[1]; j<size2[1]; j++)
+        {
+              InternalImageType::IndexType currentIndex;
 
- typedef itk::RescaleIntensityImageFilter<   InternalImageType, InternalImageType > RescaleFilterType;
-  RescaleFilterType::Pointer rescaler = RescaleFilterType::New();
-  rescaler->SetOutputMinimum(   0 );
-  rescaler->SetOutputMaximum( 255 ); //255 means white
-  rescaler->SetInput(castFilter->GetOutput() );
+               currentIndex[0] = i;
 
+               currentIndex[1] = j;
 
+               InternalImageType::PixelType currentValue =castFilter->GetOutput()->GetPixel(currentIndex);
 
-    scaledImage=rescaler->GetOutput();
-    scaledImage->SetSpacing( inputSpacing );
-    scaledImage->GetLargestPossibleRegion();
-    scaledImage->Update(); 
+               if(currentValue>maxValue)
 
-    for (unsigned int i = 0; i < 3; ++i)
-    {  
-     _voxel.push_back(_physical_dims(i) / (imageSize[i]));
-    }
+               {
+                  maxValue = currentValue;
 
-   InternalImageType::SpacingType spacing2;
-    
-    spacing2[0] = _voxel[0]; // spacing along X
-    spacing2[1] = _voxel[1];
-    spacing2[2] = _voxel[2];
-    
-    scaledImage->SetSpacing(spacing2);
+               }
 
-    InternalImageType::PointType newOrigin;
-    
-    newOrigin[0] = _origin(0); // spacing along X
-    newOrigin[1] = _origin(1);
-    newOrigin[2] = _origin(2);
+               if(currentValue<minValue)
 
-    scaledImage->SetOrigin( newOrigin);       
-    _is_console  <<"DICOM Serie New Origin:   " << newOrigin<<std::endl<<std::endl;
+               {
+                      minValue = currentValue;
 
+               }
 
+        }
+ }
 
-     
+// std::cout<<"maxValue "<<maxValue<<std::endl;
+// std::cout<<"minValue "<<minValue<<std::endl;
 
+typedef itk::RescaleIntensityImageFilter<   InternalImageType, InternalImageType > RescaleFilterType;
+RescaleFilterType::Pointer rescaler = RescaleFilterType::New();
+
+rescaler->SetOutputMinimum(   0 );
+rescaler->SetOutputMaximum( 255 ); //255 means white
+rescaler->SetInput(castFilter->GetOutput() );
+
+InternalImageType::Pointer scaledImage=InternalImageType::New();
+
+scaledImage=rescaler->GetOutput();
+scaledImage->SetSpacing( inputSpacing );
+scaledImage->GetLargestPossibleRegion();
+scaledImage->Update(); 
+
+for (unsigned int i = 0; i < 3; ++i)
+{  
+ _voxel.push_back(_physical_dims(i) / (imageSize[i]));
+}
+
+InternalImageType::SpacingType spacing2;
+
+spacing2[0] = _voxel[0]; // spacing along X
+spacing2[1] = _voxel[1];
+spacing2[2] = _voxel[2];
+
+scaledImage->SetSpacing(spacing2);
+
+InternalImageType::PointType newOrigin;
+
+newOrigin[0] = _origin(0); // spacing along X
+newOrigin[1] = _origin(1);
+newOrigin[2] = _origin(2);
+
+scaledImage->SetOrigin( newOrigin);       
+_is_console  <<"   Moving to DICOM Serie Origin:  " << newOrigin<<std::endl;
 
 typedef itk::GrayscaleFillholeImageFilter<InternalImageType,InternalImageType>  FillholeFilterType;
 FillholeFilterType::Pointer  fillhole = FillholeFilterType::New();
 
-
+fillhole->SetInput( scaledImage );
+fillhole->Update();
 
 typedef itk::CurvatureFlowImageFilter< InternalImageType, InternalImageType > CurvatureFlowImageFilterType;
 CurvatureFlowImageFilterType::Pointer smoothing = CurvatureFlowImageFilterType::New();
 
+smoothing->SetNumberOfIterations( 5 ); smoothing->SetTimeStep( 0.125 );
+smoothing->SetInput( fillhole->GetOutput() );
+
 typedef itk::ConnectedThresholdImageFilter< InternalImageType, InternalImageType > ConnectedFilterType;
 ConnectedFilterType::Pointer connectedThreshold = ConnectedFilterType::New();
 
- typedef itk::CastImageFilter< ShortImageType, OutputImageType > CastFilterType2;
-CastFilterType2::Pointer caster3 = CastFilterType2::New();
-CastFilterType2::Pointer caster2 = CastFilterType2::New();
-
- typedef itk::CastImageFilter< InternalImageType, OutputImageType > CastFilterType3;
-CastFilterType3::Pointer caster4 = CastFilterType3::New();
-
-
-
-// smoothing->SetNumberOfIterations( 0 ); smoothing->SetTimeStep( 0.125 );
-
-// smoothing->SetInput( reader->GetOutput() );
-
-
-
-   InternalImageType::SizeType size2 =castFilter->GetOutput()->GetLargestPossibleRegion().GetSize();
-
-  InternalImageType::IndexType index2 =castFilter->GetOutput()->GetLargestPossibleRegion().GetIndex();
-
-  InternalImageType::PixelType maxValue;
-  InternalImageType::PixelType minValue;
-
-             for(int i = index2[0]; i<size2[0]; i++)
-
-             {
-
-                    for(int j = index2[1]; j<size2[1]; j++)
-
-                    {
-
-                           InternalImageType::IndexType currentIndex;
-
-                           currentIndex[0] = i;
-
-                           currentIndex[1] = j;
-
-                           InternalImageType::PixelType currentValue =castFilter->GetOutput()->GetPixel(currentIndex);
-
-                           if(currentValue>maxValue)
-
-                           {
-
-
-//std::cout<<"i: "<<i<<"j: "<<j<<std::endl;
-                                  maxValue = currentValue;
-
-                           }
-
-                           if(currentValue<minValue)
-
-                           {
-
-                                  minValue = currentValue;
-
-                           }
-
-                    }
-
-             }
-
-
-             std::cout<<"maxValue "<<maxValue<<std::endl;
-             std::cout<<"minValue "<<minValue<<std::endl;
-
-// connectedThreshold->SetInput(scaledImage); 
-// connectedThreshold->SetLower(80 ); 
-// connectedThreshold->SetUpper( 130 );
-// connectedThreshold->SetReplaceValue( 255 ); //255=white means selected
-// connectedThreshold->SetInput( scaledImage ); 
-
-
-connectedThreshold->SetInput(scaledImage); 
+connectedThreshold->SetInput(smoothing->GetOutput()); 
 connectedThreshold->SetLower(90 ); 
 connectedThreshold->SetUpper( 112 );
 connectedThreshold->SetReplaceValue( 255 ); //255=white means selected
 connectedThreshold->SetInput( scaledImage ); 
 
-
-
 InternalImageType::IndexType  index;
-
 
 // //shoulder 
 //    index[0]=142;
@@ -308,69 +267,37 @@ InternalImageType::IndexType  index;
   // index[1]=177;
   // index[2]=4;
 
-
 //brain 2 
   index[0]=60;
   index[1]=116;
   index[2]=8;
 
-std::cout << "Seed index = " << index << std::endl;
+_is_console  <<"   Applying connectedThreshold ITK filter:  " << std::endl;
+std::cout   << "       Filter info: selected Seed index:  " << index << std::endl;
+
 connectedThreshold->SetSeed(index);
 connectedThreshold->Update();
 
-
-caster4->SetInput(connectedThreshold->GetOutput());
-caster4->Update();
-
-imageSize =connectedThreshold->GetOutput()->GetLargestPossibleRegion().GetSize();   
-std::cout<<imageSize<<": that one was ImageSize"<<std::endl;
-
-unsigned char  pixel_value; 
+InternalImageType::PixelType pixel_value;
 pixel_value= scaledImage->GetPixel( index ); 
 
-std::cout<<"pixel_value : "<<static_cast<unsigned>(pixel_value) <<std::endl;
-
-pixel_value= connectedThreshold->GetOutput()->GetPixel( index ); 
-
-std::cout<<"pixel_value : "<<static_cast<unsigned>(pixel_value) <<std::endl;
-
-caster4->SetInput(connectedThreshold->GetOutput());
-caster4->Update();
+std::cout   << "       with Pixel Value               " << pixel_value << std::endl;
 
 
+caster->SetInput(connectedThreshold->GetOutput());
+caster->Update();
+
+//pixel_value= connectedThreshold->GetOutput()->GetPixel( index ); 
+//std::cout<<"pixel_value : "<<static_cast<unsigned>(pixel_value) <<std::endl;
 
 
 
+writer->SetFileName("outputFilename.tiff" );
+writer->SetInput( caster->GetOutput() );
 
-// typedef itk::GradientMagnitudeImageFilter<InternalImageType, InternalImageType >  GradientMagnitudeImageFilterType;
-
-
-//   itk::TIFFImageIOFactory::RegisterOneFactory();
-//   typedef itk::ImageFileWriter< InternalImageType >  Writer2Type2;
-//   Writer2Type2::Pointer writer2 = Writer2Type2::New();
-
-//  writer2->SetFileName("outputFilenameFloat2.tiff" );
-//      writer2->SetInput( connectedThreshold->GetOutput() );
- 
-//       try
-//       {
-//       writer2->Update();
-//       }
-//    catch (itk::ExceptionObject & e)
-//       {
-//       std::cerr << e << std::endl;
-//       mooseError("Exception in file writer");
-//       }
-
-  typedef itk::ImageFileWriter< OutputImageType >  WriterType;
-  WriterType::Pointer writer3 = WriterType::New();
-
-    writer3->SetFileName("outputFilename.tiff" );
-     writer3->SetInput( caster4->GetOutput() );
- 
       try
       {
-      writer3->Update();
+      writer->Update();
       }
    catch (itk::ExceptionObject & e)
       {
@@ -379,14 +306,10 @@ caster4->Update();
       }
 
   
-    _is_console << "                        ...filtering finished" << std::endl;
+_is_console << "                        ...filtering finished" << std::endl;
 
-    _bounding_box.min() = _origin;
-    _bounding_box.max() = _origin + _physical_dims;
-
-
-
-    _is_console << "                        ...filtering finished 2" << std::endl;
+_bounding_box.min() = _origin;
+_bounding_box.max() = _origin + _physical_dims;
 
     if (_is_pars.isParamValid("component"))
     {
@@ -435,16 +358,15 @@ ImageSamplerItk::sample(const Point & p)
     }
   }
 
+ OutputImageType::IndexType pixelIndex;
+ OutputPixelType pixelValue;
 
   pixelIndex[0]=x[0];
   pixelIndex[1]=x[1];
   pixelIndex[2]=x[2];
 
-  pixelValue = scaledImage->GetPixel(pixelIndex);
-  
-
-
-  return pixelValue;
+  pixelValue = caster->GetOutput()->GetPixel(pixelIndex);
+    return pixelValue;
 
 }
 
