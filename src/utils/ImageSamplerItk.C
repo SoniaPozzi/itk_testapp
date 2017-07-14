@@ -50,6 +50,7 @@
 #include "itkImageFileReader.h"
 #include "itkImageFileWriter.h"
 #include "itkCastImageFilter.h"
+#include "itkSliceBySliceImageFilter.h"
 
 
 
@@ -97,7 +98,8 @@ ImageSamplerItk::ImageSamplerItk(const InputParameters & parameters)
 void
 ImageSamplerItk::setupImageSampler(MooseMesh & mesh)
 {
-  // Don't warn that mesh or _is_pars are unused when ITK is not enabled.
+
+
   libmesh_ignore(mesh);
   libmesh_ignore(_is_pars);
 
@@ -185,14 +187,13 @@ ImageSamplerItk::setupImageSampler(MooseMesh & mesh)
 
 
 
+     
 
 
 typedef itk::GrayscaleFillholeImageFilter<ImageType,ImageType>  FillholeFilterType;
 FillholeFilterType::Pointer  fillhole = FillholeFilterType::New();
 
-typedef itk::CastImageFilter< ImageType,OutputImageType > CastFilterType;
-CastFilterType::Pointer caster = CastFilterType::New();
-CastFilterType::Pointer caster2 = CastFilterType::New();
+
 
 typedef itk::CurvatureFlowImageFilter< ImageType, ImageType > CurvatureFlowImageFilterType;
 CurvatureFlowImageFilterType::Pointer smoothing = CurvatureFlowImageFilterType::New();
@@ -200,18 +201,72 @@ CurvatureFlowImageFilterType::Pointer smoothing = CurvatureFlowImageFilterType::
 typedef itk::ConnectedThresholdImageFilter< ImageType, ImageType > ConnectedFilterType;
 ConnectedFilterType::Pointer connectedThreshold = ConnectedFilterType::New();
 
+typedef itk::CastImageFilter< ImageType,OutputImageType > CastFilterType;
+CastFilterType::Pointer caster = CastFilterType::New();
+CastFilterType::Pointer caster2 = CastFilterType::New();
 
 
 // smoothing->SetNumberOfIterations( 0 ); smoothing->SetTimeStep( 0.125 );
 
 // smoothing->SetInput( reader->GetOutput() );
 
+   ImageType::SizeType size2 =scaledImage->GetLargestPossibleRegion().GetSize();
+
+             ImageType::IndexType index2 =scaledImage->GetLargestPossibleRegion().GetIndex();
+
+
+
+
+             ImageType::PixelType maxValue;
+             ImageType::PixelType minValue;
+
+             for(int i = index2[0]; i<size2[0]; i++)
+
+             {
+
+                    for(int j = index2[1]; j<size2[1]; j++)
+
+                    {
+
+                           ImageType::IndexType currentIndex;
+
+                           currentIndex[0] = i;
+
+                           currentIndex[1] = j;
+
+                           ImageType::PixelType currentValue =scaledImage->GetPixel(currentIndex);
+
+                           if(currentValue>maxValue)
+
+                           {
+
+                                  maxValue = currentValue;
+
+                           }
+
+                           if(currentValue<minValue)
+
+                           {
+
+                                  minValue = currentValue;
+
+                           }
+
+                    }
+
+             }
+
+
+             std::cout<<"maxValue "<<maxValue<<std::endl;
+             std::cout<<"minValue "<<minValue<<std::endl;
+
+
   fillhole->SetInput( scaledImage );
   fillhole->Update();
 
 connectedThreshold->SetInput(scaledImage); 
 connectedThreshold->SetLower(0 ); 
-connectedThreshold->SetUpper( 250 );
+connectedThreshold->SetUpper( 700 );
 connectedThreshold->SetReplaceValue( 255 );
 connectedThreshold->SetInput( scaledImage ); 
 
@@ -220,7 +275,7 @@ connectedThreshold->SetInput( scaledImage );
 ImageType::IndexType  index;
   index[0]=101;
   index[1]=177;
-  //index[2]=4;
+  index[2]=4;
 
 std::cout << "Seed index = " << index << std::endl;
 connectedThreshold->SetSeed(index);
@@ -235,6 +290,11 @@ std::cout<<imageSize<<": that one was ImageSize"<<std::endl;
 
 unsigned char  pixel_value; 
 pixel_value= scaledImage->GetPixel( index ); 
+
+std::cout<<"pixel_value : "<<static_cast<unsigned>(pixel_value) <<std::endl;
+
+pixel_value= connectedThreshold->GetOutput()->GetPixel( index ); 
+
 std::cout<<"pixel_value : "<<static_cast<unsigned>(pixel_value) <<std::endl;
 caster2->SetInput( scaledImage);
 
@@ -314,7 +374,7 @@ typedef itk::GradientMagnitudeImageFilter<ImageType, ImageType >  GradientMagnit
   WriterType::Pointer writer3 = WriterType::New();
 
     writer3->SetFileName("outputFilename.tiff" );
-     writer3->SetInput( caster2->GetOutput() );
+     writer3->SetInput( caster->GetOutput() );
  
       try
       {
@@ -384,19 +444,25 @@ typedef itk::GradientMagnitudeImageFilter<ImageType, ImageType >  GradientMagnit
     _bounding_box.min() = _origin;
     _bounding_box.max() = _origin + _physical_dims;
 
+
+
+    _is_console << "                        ...filtering finished 2" << std::endl;
+
     if (_is_pars.isParamValid("component"))
     {
+
       unsigned int n =  scaledImage->GetNumberOfComponentsPerPixel();
       std::cout<<"Number Of Components Per Pixel: "<< n <<std::endl;
      _component = _is_pars.get<unsigned int>("component");
 
+   _is_console << "                        ...filtering finished" << std::endl;
       if (_component >= n)
       mooseError("'component' parameter must be empty or have a value of 0 to ", n - 1);
   
     }
     
-    else
-    _component = 0;
+    else{
+    _component = 0;}
   }
 
   catch (itk::ExceptionObject &ex)
@@ -409,6 +475,7 @@ typedef itk::GradientMagnitudeImageFilter<ImageType, ImageType >  GradientMagnit
 Real
 ImageSamplerItk::sample(const Point & p)
 {
+
   // Do nothing if the point is outside of the image domain
   if (!_bounding_box.contains_point(p))
     return 0.0;
@@ -428,12 +495,15 @@ ImageSamplerItk::sample(const Point & p)
     }
   }
 
+
   pixelIndex[0]=x[0];
   pixelIndex[1]=x[1];
   pixelIndex[2]=x[2];
 
   pixelValue = scaledImage->GetPixel(pixelIndex);
   
+
+
   return pixelValue;
 
 }

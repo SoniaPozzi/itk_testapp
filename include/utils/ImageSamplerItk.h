@@ -136,6 +136,9 @@ typedef itk::Image<OutputPixelType, 3 > OutputImageType;
   typedef itk::Image<RGBPixelType, 3>        RGBImageType;
   typedef itk::Image<itk::IdentifierType, 3> LabeledImageType;
   
+
+
+  
   typedef itk::WatershedImageFilter<PixelType> WatershedFilterType;
   typedef itk::ScalarToRGBColormapImageFilter<LabeledImageType, RGBImageType> RGBFilterType;
    
