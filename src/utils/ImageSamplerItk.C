@@ -51,6 +51,82 @@
 #include "itkImageFileWriter.h"
 #include "itkCastImageFilter.h"
 
+// Software Guide : BeginCodeSnippet
+#include "itkImageMaskSpatialObject.h"
+// Software Guide : EndCodeSnippet
+#include "itkImageRegionIterator.h"
+#include "itkAffineTransform.h"
+
+#include "itkImageRegionIterator.h"
+#include "itkBinaryImageToShapeLabelMapFilter.h"
+#include "itkBinaryImageToLabelMapFilter.h"
+#include "itkObjectByObjectLabelMapFilter.h"
+#include "itkLabelMapToLabelImageFilter.h"
+#include "itkLabelImageToLabelMapFilter.h"
+#include "itkScalarToRGBColormapImageFilter.h"
+#include "itkConnectedComponentImageFilter.h"
+#include "itkImageRegionIterator.h"
+#include "itkBinaryImageToLabelMapFilter.h"
+
+#include "itkImageFileWriter.h"
+#include "itkImageRegionIterator.h"
+#include "itkBinaryImageToShapeLabelMapFilter.h"
+
+// Software Guide : BeginCodeSnippet
+#include "itkImageFileReader.h"
+#include "itkImageFileWriter.h"
+// Software Guide : EndCodeSnippet
+//  Software Guide : BeginLatex
+//
+//  The filter used to extract a region from an image is the
+//  \doxygen{ExtractImageFilter}. Its header is included below.  This filter
+//  is capable of extracting a slice from the input image.
+//
+//  \index{itk::ExtractImageFilter!header}
+//
+//  Software Guide : EndLatex
+// Software Guide : BeginCodeSnippet
+#include "itkExtractImageFilter.h"
+// Software Guide : EndCodeSnippet
+//  Software Guide : BeginLatex
+//
+//  The filter used to place the processed image in a region of the output
+//  image is the \doxygen{PasteImageFilter}. Its header is included below.
+//  This filter is capable of inserting the processed image into the
+//  destination image.
+//
+//  \index{itk::PasteImageFilter!header}
+//
+//  Software Guide : EndLatex
+// Software Guide : BeginCodeSnippet
+#include "itkPasteImageFilter.h"
+// Software Guide : EndCodeSnippet
+// Software Guide : BeginCodeSnippet
+#include "itkMedianImageFilter.h"
+
+#include "itkImageFileReader.h"
+#include "itkImageFileWriter.h"
+#include "itkSimpleFilterWatcher.h"
+
+#include "itkLabelImageToLabelMapFilter.h"
+#include "itkLabelSelectionLabelMapFilter.h"
+#include "itkAutoCropLabelMapFilter.h"
+#include "itkLabelMapToLabelImageFilter.h"
+#include "itkImageFileReader.h"
+#include "itkImageFileWriter.h"
+#include "itkSimpleFilterWatcher.h"
+
+#include "itkLabelImageToLabelMapFilter.h"
+#include "itkAutoCropLabelMapFilter.h"
+#include "itkLabelMapToLabelImageFilter.h"
+
+#include "itkImageFileWriter.h"
+#include "itkImageRegionIterator.h"
+#include "itkBinaryImageToLabelMapFilter.h"
+#include "itkLabelMapToLabelImageFilter.h"
+#include "itkLabelStatisticsImageFilter.h"
+
+
 
 template <>
 InputParameters
@@ -206,6 +282,11 @@ scaledImage->SetSpacing( inputSpacing );
 scaledImage->GetLargestPossibleRegion();
 scaledImage->Update(); 
 
+  typedef InternalImageType::SizeType SizeType;
+  SizeType imageSize = scaledImage->GetLargestPossibleRegion().GetSize();
+
+  std::cout << "Image size: " << imageSize[0] << 'x' << imageSize[1] << 'x' << imageSize[2] <<std::endl; 
+
 for (unsigned int i = 0; i < 3; ++i)
 {  
  _voxel.push_back(_physical_dims(i) / (imageSize[i]));
@@ -289,11 +370,38 @@ caster->Update();
 
 //pixel_value= connectedThreshold->GetOutput()->GetPixel( index ); 
 //std::cout<<"pixel_value : "<<static_cast<unsigned>(pixel_value) <<std::endl;
+ typedef itk::LabelObject< OutputPixelType, 3 > LabelObjectType;
+  typedef itk::LabelMap< LabelObjectType >         LabelMapType;
 
 
+  typedef itk::LabelImageToLabelMapFilter< OutputImageType, LabelMapType > ImageToLabelMapFilterType;
+  ImageToLabelMapFilterType::Pointer imageToLabelMapFilter =    ImageToLabelMapFilterType::New();
+  imageToLabelMapFilter->SetInput( caster->GetOutput() );
 
-writer->SetFileName("outputFilename.tiff" );
-writer->SetInput( caster->GetOutput() );
+  OutputPixelType backgroundValue = 0;
+
+  imageToLabelMapFilter->SetBackgroundValue( backgroundValue );
+
+  typedef itk::AutoCropLabelMapFilter< LabelMapType > AutoCropLabelMapFilterType;
+  AutoCropLabelMapFilterType::Pointer autoCropFilter = AutoCropLabelMapFilterType::New();
+
+  autoCropFilter->SetInput( imageToLabelMapFilter->GetOutput() );
+
+  AutoCropLabelMapFilterType::SizeType size;
+  size[0] = 0;
+  size[1] = 0;
+  size[2] = 0;
+  autoCropFilter->SetCropBorder( size );
+
+  itk::SimpleFilterWatcher watcher(autoCropFilter, "AutoCropLabelMapFilter");
+
+  typedef itk::LabelMapToLabelImageFilter< LabelMapType, OutputImageType>  LabelMapToLabelImageFilterType;
+  LabelMapToLabelImageFilterType::Pointer labelMapToLabelImageFilter =   LabelMapToLabelImageFilterType::New();
+  labelMapToLabelImageFilter->SetInput( autoCropFilter->GetOutput() );
+
+  writer->SetInput( labelMapToLabelImageFilter->GetOutput() );
+  writer->SetFileName("outputFilename.tiff" );
+//writer->SetInput(caster->GetOutput());
 
       try
       {
@@ -305,7 +413,10 @@ writer->SetInput( caster->GetOutput() );
       mooseError("Exception in file writer");
       }
 
-  
+
+
+
+
 _is_console << "                        ...filtering finished" << std::endl;
 
 _bounding_box.min() = _origin;
@@ -365,7 +476,9 @@ ImageSamplerItk::sample(const Point & p)
   pixelIndex[1]=x[1];
   pixelIndex[2]=x[2];
 
-  pixelValue = caster->GetOutput()->GetPixel(pixelIndex);
+  pixelValue = writer->GetInput()->GetPixel(pixelIndex);
+
+  //std::cout<<pixelValue<<std::endl;
     return pixelValue;
 
 }

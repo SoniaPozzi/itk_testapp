@@ -3,7 +3,7 @@
   dim = 3
   file_base =brain
   dicomDirectory=/Users/sonia/Projects/internshipINL/itk_testapp/tests/image_function/new_stack/
-  cells_per_pixel_vector='1 1 2.0'   
+  cells_per_pixel_vector='0.25 0.25 1.0'   
 
 []
 

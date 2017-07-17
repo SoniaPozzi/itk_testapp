@@ -132,7 +132,6 @@ typedef itk::Image<RGBPixelType, 3>        RGBImageType;
 typedef itk::Image<itk::IdentifierType, 3> LabeledImageType;
 
 typedef itk::CastImageFilter< InternalImageType, OutputImageType > CastFilterOutType;
-
 CastFilterOutType::Pointer caster = CastFilterOutType::New();
 
 
