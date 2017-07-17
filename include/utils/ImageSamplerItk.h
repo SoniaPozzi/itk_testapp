@@ -31,10 +31,7 @@
 
 #endif
 
-#include "itkImageSeriesWriter.h"
 
-#include "itkImageFileReader.h"
-#include "itkImageFileWriter.h"
 #include "itkScalarToRGBPixelFunctor.h"
 #include "itkUnaryFunctorImageFilter.h"
 #include "itkVectorCastImageFilter.h"
@@ -125,19 +122,14 @@ private:
 
 protected:
 
-typedef unsigned char                      OutputPixelType;
-typedef itk::Image<OutputPixelType, 3 >    OutputImageType;
-typedef itk::RGBPixel<unsigned char>       RGBPixelType;
-typedef itk::Image<RGBPixelType, 3>        RGBImageType;
+
 typedef itk::Image<itk::IdentifierType, 3> LabeledImageType;
 
 typedef itk::CastImageFilter< InternalImageType, OutputImageType > CastFilterOutType;
 CastFilterOutType::Pointer caster = CastFilterOutType::New();
 
 
-typedef itk::ImageFileWriter< OutputImageType >  WriterType;
-WriterType::Pointer writer = WriterType::New();
- 
+
 };
 
 

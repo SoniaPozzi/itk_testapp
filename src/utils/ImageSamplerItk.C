@@ -230,44 +230,6 @@ typedef itk::CastImageFilter< ShortImageType, InternalImageType > CastFilterType
 CastFilterType::Pointer castFilter = CastFilterType::New();
 castFilter->SetInput( reader->GetOutput() );
 
-InternalImageType::SizeType size2 =castFilter->GetOutput()->GetLargestPossibleRegion().GetSize();
-InternalImageType::IndexType index2 =castFilter->GetOutput()->GetLargestPossibleRegion().GetIndex();
-
-InternalImageType::PixelType maxValue;
-InternalImageType::PixelType minValue;
-
- for(int i = index2[0]; i<size2[0]; i++)
- {
-        for(int j = index2[1]; j<size2[1]; j++)
-        {
-              InternalImageType::IndexType currentIndex;
-
-               currentIndex[0] = i;
-
-               currentIndex[1] = j;
-
-               InternalImageType::PixelType currentValue =castFilter->GetOutput()->GetPixel(currentIndex);
-
-               if(currentValue>maxValue)
-
-               {
-                  maxValue = currentValue;
-
-               }
-
-               if(currentValue<minValue)
-
-               {
-                      minValue = currentValue;
-
-               }
-
-        }
- }
-
-// std::cout<<"maxValue "<<maxValue<<std::endl;
-// std::cout<<"minValue "<<minValue<<std::endl;
-
 typedef itk::RescaleIntensityImageFilter<   InternalImageType, InternalImageType > RescaleFilterType;
 RescaleFilterType::Pointer rescaler = RescaleFilterType::New();
 
@@ -413,6 +375,15 @@ caster->Update();
       mooseError("Exception in file writer");
       }
 
+    _is_console << "Read...     " << std::endl<<std::endl;
+    outputImageSize =labelMapToLabelImageFilter->GetOutput()->GetLargestPossibleRegion().GetSize();
+    _is_console  <<" Cropped  DICOM Serie Dimension:    " << outputImageSize<<std::endl;
+    const InternalImageType::SpacingType& croppedSpacing=labelMapToLabelImageFilter->GetOutput()->GetSpacing();
+    _is_console <<" Cropped  DICOM Serie Spacing:      " << croppedSpacing << std::endl;
+    const OutputImageType::PointType & croppedorigin = labelMapToLabelImageFilter->GetOutput()->GetOrigin();
+    _is_console  <<" Cropped  DICOM Serie Origin:       "<<  croppedorigin << std::endl;
+
+    _is_console << "Applying the filters...    " << std::endl<<std::endl;
 
 
 

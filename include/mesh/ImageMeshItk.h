@@ -92,39 +92,16 @@ class ImageMeshItk : public GeneratedMesh,  public FileDicomChoose
   const bool _scale_to_one;
   bool _has_chooseSeries;
 
-  /**
-   * A number <= 1.0 which determines the number of cells in the mesh
-   * per pixel in each direction. Defaults to 1.0
-   * Example:
-   * Given:  Original image is 1843x1590 pixels
-   *         _cells_per_pixel = 0.3
-   * Result: Mesh has 552x477 elements
-   */
 
-  std::vector<Real>  _cells_per_pixel_vector;
+std::vector<Real>  _cells_per_pixel_vector;
 
 typedef unsigned char                      OutputPixelType;
 typedef itk::Image<OutputPixelType, 3 >    OutputImageType;
 OutputImageType::Pointer scaledImage2=OutputImageType::New();
-//typedef itk::RGBPixel<unsigned char>       RGBPixelType;
-//typedef itk::Image<RGBPixelType, 3>        RGBImageType;
 typedef itk::Image<itk::IdentifierType, 3> LabeledImageType;
 
-// typedef itk::CastImageFilter< InternalImageType, OutputImageType > CastFilterOutType;
-// CastFilterOutType::Pointer caster = CastFilterOutType::New();
 
 
-
-// typedef itk::LabelObject< OutputPixelType, 3 > LabelObjectType;
-// typedef itk::LabelMap< LabelObjectType >         LabelMapType;
-// typedef itk::LabelMapToLabelImageFilter< LabelMapType, OutputImageType>  LabelMapToLabelImageFilterType;
-//   LabelMapToLabelImageFilterType::Pointer labelMapToLabelImageFilter =   LabelMapToLabelImageFilterType::New();
- 
-
-
-// typedef itk::ImageFileWriter< OutputImageType >  WriterType;
-// WriterType::Pointer writer= WriterType::New();
-// typedef OutputImageType::SizeType SizeType;
 
 };
 
