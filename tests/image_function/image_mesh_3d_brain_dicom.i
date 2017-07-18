@@ -21,6 +21,7 @@
     type = ImageFunctionItk
     dicomDirectory=/Users/sonia/Projects/internshipINL/itk_testapp/tests/image_function/new_stack/
     file_base =brain
+    scale_to_one=false
 
   [../]
 []

@@ -216,26 +216,18 @@ ImageSamplerItk::setupImageSampler(MooseMesh & mesh)
 
 //////////////////////
 
-    _is_console << "Filtered Image Informations: " << std::endl<<std::endl;
-outputImageSize =filteredImage->GetLargestPossibleRegion().GetSize();
- _is_console  <<"   Filterd DICOM Serie Dimension:          " << outputImageSize<<std::endl;
-
-
-  //
-  //
-
-      const OutputImageType::SpacingType& croppedSpacing=filteredImage->GetSpacing();
-    _is_console <<"   Filterd DICOM Serie Spacing:             " << croppedSpacing << std::endl;
 
 for (unsigned int i = 0; i < 3; ++i)
 {  
 
   std::cout<<"physical dim"<<_physical_dims(i)<<std::endl;
 
-  std::cout<<"croppedspacing"<<croppedSpacing[i]<<std::endl;
- _voxel.push_back(croppedSpacing[i]);
+  std::cout<<"croppedspacing"<<outputImageSpacing[i]<<std::endl;
+ _voxel.push_back(outputImageSpacing[i]);
   std::cout<<"voxel"<<_voxel[i]<<std::endl;
 }
+
+filteredImage->Update();
 
 OutputImageType::SpacingType spacing;
 
@@ -256,8 +248,6 @@ filteredImage->SetOrigin(newOrigin);
 filteredImage->Update();
 
 
-
-
     const OutputImageType::PointType & croppedorigin = filteredImage->GetOrigin();
     _is_console  <<"   Filterd DICOM Serie Origin moved to:    "<<  croppedorigin << std::endl;
 
@@ -270,7 +260,7 @@ _bounding_box.max() = _origin + _physical_dims;
     if (_is_pars.isParamValid("component"))
     {
 
-      unsigned int n =  scaledImage->GetNumberOfComponentsPerPixel();
+      unsigned int n =  filteredImage->GetNumberOfComponentsPerPixel();
       std::cout<<"Number Of Components Per Pixel: "<< n <<std::endl;
      _component = _is_pars.get<unsigned int>("component");
 
@@ -295,11 +285,16 @@ Real
 ImageSamplerItk::sample(const Point & p)
 {
 
-  // Do nothing if the point is outside of the image domain
+
+ //   _is_console <<"   Filterd DICOM Serie Spacing:             " << croppedSpacing << std::endl;
   if (!_bounding_box.contains_point(p))
     return 0.0;
   // Determine pixel coordinates
   std::vector<int> x(3, 0);
+  std::vector<int> res(3, 0);
+  res[0]=106;
+  res[1]=56;
+  res[2]=0;
   for (int i = 0; i < LIBMESH_DIM; ++i)
   {
     // Compute position, only if voxel size is greater than zero
@@ -323,7 +318,6 @@ ImageSamplerItk::sample(const Point & p)
 
   pixelValue = filteredImage->GetPixel(pixelIndex);
 
-  //std::cout<<pixelValue<<std::endl;
     return pixelValue;
 
 }

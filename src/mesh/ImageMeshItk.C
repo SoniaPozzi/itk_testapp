@@ -79,14 +79,12 @@ ImageMeshItk::buildMesh3D()
 
   int xpixels = 0, ypixels = 0, zpixels = 0;
 
-  imageSize =filteredImage->GetLargestPossibleRegion().GetSize();   
-  const OutputImageType::SpacingType& inputSpacing=filteredImage->GetSpacing();
-  
-  xpixels = imageSize[0], ypixels = imageSize[1], zpixels =imageSize[2];
 
-  _xmax = imageSize[0]*inputSpacing[0];
-  _ymax = imageSize[1]*inputSpacing[1];
-  _zmax = imageSize[2]*inputSpacing[2];
+  xpixels = outputImageSize[0], ypixels = outputImageSize[1], zpixels =outputImageSize[2];
+
+  _xmax = outputImageSize[0]*outputImageSpacing[0];
+  _ymax = outputImageSize[1]*outputImageSpacing[1];
+  _zmax = outputImageSize[2]*outputImageSpacing[2];
 
   if (_scale_to_one)
   {
@@ -94,9 +92,12 @@ ImageMeshItk::buildMesh3D()
     _xmax /= max;
     _ymax /= max;
     _zmax /= max;
+
+
+   
   }
 
- 
+  std::cout<<"xmax"<<_xmax<<_ymax<<_zmax<<std::endl;
   // Compute the number of cells in the x and y direction based on
   // the user's cells_per_pixel parameter.  Note: we use ints here
   // because the GeneratedMesh params object uses ints for these...

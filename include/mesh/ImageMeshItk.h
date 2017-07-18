@@ -97,7 +97,6 @@ std::vector<Real>  _cells_per_pixel_vector;
 
 typedef unsigned char                      OutputPixelType;
 typedef itk::Image<OutputPixelType, 3 >    OutputImageType;
-OutputImageType::Pointer scaledImage2=OutputImageType::New();
 typedef itk::Image<itk::IdentifierType, 3> LabeledImageType;
 
 
