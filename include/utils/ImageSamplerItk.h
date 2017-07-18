@@ -123,10 +123,6 @@ private:
 protected:
 
 
-typedef itk::Image<itk::IdentifierType, 3> LabeledImageType;
-
-typedef itk::CastImageFilter< InternalImageType, OutputImageType > CastFilterOutType;
-CastFilterOutType::Pointer caster = CastFilterOutType::New();
 
 
 

@@ -181,6 +181,7 @@ ImageSamplerItk::setupImageSampler(MooseMesh & mesh)
   else
   {
     _physical_dims(0) = bbox.max()(0) - bbox.min()(0);
+
   #if LIBMESH_DIM > 1
     _physical_dims(1) = bbox.max()(1) - bbox.min()(1);
   #endif
@@ -212,180 +213,53 @@ ImageSamplerItk::setupImageSampler(MooseMesh & mesh)
       mooseError("Not able to cast image_mesh.");
   }
 
-  try
-  {
-    _is_console << "Read...     " << std::endl<<std::endl;
-    imageSize =reader->GetOutput()->GetLargestPossibleRegion().GetSize();
-    _is_console  <<"   DICOM Serie Dimension:    " << imageSize<<std::endl;
-    const InternalImageType::SpacingType& inputSpacing=reader->GetOutput()->GetSpacing();
-    _is_console <<"   DICOM Serie Spacing:      " << inputSpacing << std::endl;
-    const InternalImageType::PointType & origin = reader->GetOutput()->GetOrigin();
-    _is_console  <<"   DICOM Serie Origin:       "<<  origin << std::endl;
 
-    _is_console << "Applying the filters...    " << std::endl<<std::endl;
+//////////////////////
+
+    _is_console << "Filtered Image Informations: " << std::endl<<std::endl;
+outputImageSize =filteredImage->GetLargestPossibleRegion().GetSize();
+ _is_console  <<"   Filterd DICOM Serie Dimension:          " << outputImageSize<<std::endl;
 
 
-typedef itk::CastImageFilter< ShortImageType, InternalImageType > CastFilterType;
+  //
+  //
 
-CastFilterType::Pointer castFilter = CastFilterType::New();
-castFilter->SetInput( reader->GetOutput() );
-
-typedef itk::RescaleIntensityImageFilter<   InternalImageType, InternalImageType > RescaleFilterType;
-RescaleFilterType::Pointer rescaler = RescaleFilterType::New();
-
-rescaler->SetOutputMinimum(   0 );
-rescaler->SetOutputMaximum( 255 ); //255 means white
-rescaler->SetInput(castFilter->GetOutput() );
-
-InternalImageType::Pointer scaledImage=InternalImageType::New();
-
-scaledImage=rescaler->GetOutput();
-scaledImage->SetSpacing( inputSpacing );
-scaledImage->GetLargestPossibleRegion();
-scaledImage->Update(); 
-
-  typedef InternalImageType::SizeType SizeType;
-  SizeType imageSize = scaledImage->GetLargestPossibleRegion().GetSize();
-
-  std::cout << "Image size: " << imageSize[0] << 'x' << imageSize[1] << 'x' << imageSize[2] <<std::endl; 
+      const OutputImageType::SpacingType& croppedSpacing=filteredImage->GetSpacing();
+    _is_console <<"   Filterd DICOM Serie Spacing:             " << croppedSpacing << std::endl;
 
 for (unsigned int i = 0; i < 3; ++i)
 {  
- _voxel.push_back(_physical_dims(i) / (imageSize[i]));
+
+  std::cout<<"physical dim"<<_physical_dims(i)<<std::endl;
+
+  std::cout<<"croppedspacing"<<croppedSpacing[i]<<std::endl;
+ _voxel.push_back(croppedSpacing[i]);
+  std::cout<<"voxel"<<_voxel[i]<<std::endl;
 }
 
-InternalImageType::SpacingType spacing2;
+OutputImageType::SpacingType spacing;
 
-spacing2[0] = _voxel[0]; // spacing along X
-spacing2[1] = _voxel[1];
-spacing2[2] = _voxel[2];
+spacing[0] = _voxel[0]; // spacing along X
+spacing[1] = _voxel[1];
+spacing[2] = _voxel[2];
 
-scaledImage->SetSpacing(spacing2);
+//filteredImage->SetSpacing(spacing);
+filteredImage->Update();
 
-InternalImageType::PointType newOrigin;
+OutputImageType::PointType newOrigin;
 
-newOrigin[0] = _origin(0); // spacing along X
+newOrigin[0] = _origin(0); 
 newOrigin[1] = _origin(1);
 newOrigin[2] = _origin(2);
 
-scaledImage->SetOrigin( newOrigin);       
-_is_console  <<"   Moving to DICOM Serie Origin:  " << newOrigin<<std::endl;
-
-typedef itk::GrayscaleFillholeImageFilter<InternalImageType,InternalImageType>  FillholeFilterType;
-FillholeFilterType::Pointer  fillhole = FillholeFilterType::New();
-
-fillhole->SetInput( scaledImage );
-fillhole->Update();
-
-typedef itk::CurvatureFlowImageFilter< InternalImageType, InternalImageType > CurvatureFlowImageFilterType;
-CurvatureFlowImageFilterType::Pointer smoothing = CurvatureFlowImageFilterType::New();
-
-smoothing->SetNumberOfIterations( 5 ); smoothing->SetTimeStep( 0.125 );
-smoothing->SetInput( fillhole->GetOutput() );
-
-typedef itk::ConnectedThresholdImageFilter< InternalImageType, InternalImageType > ConnectedFilterType;
-ConnectedFilterType::Pointer connectedThreshold = ConnectedFilterType::New();
-
-connectedThreshold->SetInput(smoothing->GetOutput()); 
-connectedThreshold->SetLower(90 ); 
-connectedThreshold->SetUpper( 112 );
-connectedThreshold->SetReplaceValue( 255 ); //255=white means selected
-connectedThreshold->SetInput( scaledImage ); 
-
-InternalImageType::IndexType  index;
-
-// //shoulder 
-//    index[0]=142;
-//    index[1]=138;
-//    index[2]=4;
+filteredImage->SetOrigin(newOrigin);
+filteredImage->Update();
 
 
-// //shoulder from above
-//    index[0]=278;
-//    index[1]=230;
-//    index[2]=4;
-
-//brain 1 
-  // index[0]=101;
-  // index[1]=177;
-  // index[2]=4;
-
-//brain 2 
-  index[0]=60;
-  index[1]=116;
-  index[2]=8;
-
-_is_console  <<"   Applying connectedThreshold ITK filter:  " << std::endl;
-std::cout   << "       Filter info: selected Seed index:  " << index << std::endl;
-
-connectedThreshold->SetSeed(index);
-connectedThreshold->Update();
-
-InternalImageType::PixelType pixel_value;
-pixel_value= scaledImage->GetPixel( index ); 
-
-std::cout   << "       with Pixel Value               " << pixel_value << std::endl;
 
 
-caster->SetInput(connectedThreshold->GetOutput());
-caster->Update();
-
-//pixel_value= connectedThreshold->GetOutput()->GetPixel( index ); 
-//std::cout<<"pixel_value : "<<static_cast<unsigned>(pixel_value) <<std::endl;
- typedef itk::LabelObject< OutputPixelType, 3 > LabelObjectType;
-  typedef itk::LabelMap< LabelObjectType >         LabelMapType;
-
-
-  typedef itk::LabelImageToLabelMapFilter< OutputImageType, LabelMapType > ImageToLabelMapFilterType;
-  ImageToLabelMapFilterType::Pointer imageToLabelMapFilter =    ImageToLabelMapFilterType::New();
-  imageToLabelMapFilter->SetInput( caster->GetOutput() );
-
-  OutputPixelType backgroundValue = 0;
-
-  imageToLabelMapFilter->SetBackgroundValue( backgroundValue );
-
-  typedef itk::AutoCropLabelMapFilter< LabelMapType > AutoCropLabelMapFilterType;
-  AutoCropLabelMapFilterType::Pointer autoCropFilter = AutoCropLabelMapFilterType::New();
-
-  autoCropFilter->SetInput( imageToLabelMapFilter->GetOutput() );
-
-  AutoCropLabelMapFilterType::SizeType size;
-  size[0] = 0;
-  size[1] = 0;
-  size[2] = 0;
-  autoCropFilter->SetCropBorder( size );
-
-  itk::SimpleFilterWatcher watcher(autoCropFilter, "AutoCropLabelMapFilter");
-
-  typedef itk::LabelMapToLabelImageFilter< LabelMapType, OutputImageType>  LabelMapToLabelImageFilterType;
-  LabelMapToLabelImageFilterType::Pointer labelMapToLabelImageFilter =   LabelMapToLabelImageFilterType::New();
-  labelMapToLabelImageFilter->SetInput( autoCropFilter->GetOutput() );
-
-  writer->SetInput( labelMapToLabelImageFilter->GetOutput() );
-  writer->SetFileName("outputFilename.tiff" );
-//writer->SetInput(caster->GetOutput());
-
-      try
-      {
-      writer->Update();
-      }
-   catch (itk::ExceptionObject & e)
-      {
-      std::cerr << e << std::endl;
-      mooseError("Exception in file writer");
-      }
-
-    _is_console << "Read...     " << std::endl<<std::endl;
-    outputImageSize =labelMapToLabelImageFilter->GetOutput()->GetLargestPossibleRegion().GetSize();
-    _is_console  <<" Cropped  DICOM Serie Dimension:    " << outputImageSize<<std::endl;
-    const InternalImageType::SpacingType& croppedSpacing=labelMapToLabelImageFilter->GetOutput()->GetSpacing();
-    _is_console <<" Cropped  DICOM Serie Spacing:      " << croppedSpacing << std::endl;
-    const OutputImageType::PointType & croppedorigin = labelMapToLabelImageFilter->GetOutput()->GetOrigin();
-    _is_console  <<" Cropped  DICOM Serie Origin:       "<<  croppedorigin << std::endl;
-
-    _is_console << "Applying the filters...    " << std::endl<<std::endl;
-
-
+    const OutputImageType::PointType & croppedorigin = filteredImage->GetOrigin();
+    _is_console  <<"   Filterd DICOM Serie Origin moved to:    "<<  croppedorigin << std::endl;
 
 
 _is_console << "                        ...filtering finished" << std::endl;
@@ -408,12 +282,12 @@ _bounding_box.max() = _origin + _physical_dims;
     
     else{
     _component = 0;}
-  }
+  // }
 
-  catch (itk::ExceptionObject &ex)
-  { 
-    mooseError("exception in reading dicom series");
-  }
+  // catch (itk::ExceptionObject &ex)
+  // { 
+  //   mooseError("exception in reading dicom series");
+  // }
 
 }
 
@@ -435,7 +309,7 @@ ImageSamplerItk::sample(const Point & p)
     {
       x[i] = std::floor((p(i) - _origin(i)) / _voxel[i]);
        // If the point falls on the mesh extents the index needs to be decreased by one
-      if (x[i] == imageSize[i])
+      if (x[i] == outputImageSize[i])
         x[i]--;
     }
   }
@@ -447,7 +321,7 @@ ImageSamplerItk::sample(const Point & p)
   pixelIndex[1]=x[1];
   pixelIndex[2]=x[2];
 
-  pixelValue = writer->GetInput()->GetPixel(pixelIndex);
+  pixelValue = filteredImage->GetPixel(pixelIndex);
 
   //std::cout<<pixelValue<<std::endl;
     return pixelValue;

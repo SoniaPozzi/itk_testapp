@@ -79,8 +79,8 @@ ImageMeshItk::buildMesh3D()
 
   int xpixels = 0, ypixels = 0, zpixels = 0;
 
-  imageSize =reader->GetOutput()->GetLargestPossibleRegion().GetSize();   
-  const InternalImageType::SpacingType& inputSpacing=reader->GetOutput()->GetSpacing();
+  imageSize =filteredImage->GetLargestPossibleRegion().GetSize();   
+  const OutputImageType::SpacingType& inputSpacing=filteredImage->GetSpacing();
   
   xpixels = imageSize[0], ypixels = imageSize[1], zpixels =imageSize[2];
 
@@ -96,6 +96,7 @@ ImageMeshItk::buildMesh3D()
     _zmax /= max;
   }
 
+ 
   // Compute the number of cells in the x and y direction based on
   // the user's cells_per_pixel parameter.  Note: we use ints here
   // because the GeneratedMesh params object uses ints for these...
