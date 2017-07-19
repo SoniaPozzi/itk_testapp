@@ -18,51 +18,6 @@
 #include "GeneratedMesh.h"
 #include "FileDicomChoose.h"
 
-#include "itkImageFileWriter.h"
-#include "itkImageSeriesWriter.h"
-#include "itkRescaleIntensityImageFilter.h"
-
-#include "itkImageSeriesWriter.h"
-
-#include "itkImageFileReader.h"
-#include "itkImageFileWriter.h"
-#include "itkScalarToRGBPixelFunctor.h"
-#include "itkUnaryFunctorImageFilter.h"
-#include "itkVectorCastImageFilter.h"
-#include "itkVectorGradientAnisotropicDiffusionImageFilter.h"
-#include "itkWatershedImageFilter.h"
-#include "itkRescaleIntensityImageFilter.h"
-#include "itkScalarToRGBColormapImageFilter.h"
-#include "itkGradientMagnitudeImageFilter.h"
-#include "itkGradientAnisotropicDiffusionImageFilter.h"
-#include "itkVectorMagnitudeImageFilter.h"
-#include "itkMorphologicalWatershedImageFilter.h"
- #include "itkTIFFImageIOFactory.h"
-
-#include "itkGradientMagnitudeRecursiveGaussianImageFilter.h"
-#include <itkThresholdImageFilter.h>
-
-
-
-
-
-#include "itkGrayscaleFillholeImageFilter.h"
-
-#include "itkCannyEdgeDetectionImageFilter.h"  
-#include "itkCastImageFilter.h"
-#include "itkRescaleIntensityImageFilter.h"
-
-#include "itkThresholdImageFilter.h"
-#include "itkConnectedThresholdImageFilter.h"
-#include "itkCurvatureFlowImageFilter.h"
-
-
-#include "itkLabelImageToLabelMapFilter.h"
-#include "itkLabelSelectionLabelMapFilter.h"
-#include "itkAutoCropLabelMapFilter.h"
-#include "itkLabelMapToLabelImageFilter.h"
-#include "itkSimpleFilterWatcher.h"
-
 class ImageMeshItk;
 
 template <>
@@ -80,8 +35,6 @@ class ImageMeshItk : public GeneratedMesh,  public FileDicomChoose
   virtual MooseMesh & clone() const override;
   virtual void buildMesh() override;
 
-
-
   protected:
 
   /**
@@ -91,15 +44,7 @@ class ImageMeshItk : public GeneratedMesh,  public FileDicomChoose
 
   const bool _scale_to_one;
   bool _has_chooseSeries;
-
-
-std::vector<Real>  _cells_per_pixel_vector;
-
-typedef unsigned char                      OutputPixelType;
-typedef itk::Image<OutputPixelType, 3 >    OutputImageType;
-typedef itk::Image<itk::IdentifierType, 3> LabeledImageType;
-
-
+  std::vector<Real>  _cells_per_pixel_vector;
 
 
 };

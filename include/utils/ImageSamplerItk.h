@@ -32,24 +32,6 @@
 #endif
 
 
-#include "itkScalarToRGBPixelFunctor.h"
-#include "itkUnaryFunctorImageFilter.h"
-#include "itkVectorCastImageFilter.h"
-#include "itkVectorGradientAnisotropicDiffusionImageFilter.h"
-#include "itkWatershedImageFilter.h"
-#include "itkRescaleIntensityImageFilter.h"
-#include "itkScalarToRGBColormapImageFilter.h"
-#include "itkGradientMagnitudeImageFilter.h"
-#include "itkGradientAnisotropicDiffusionImageFilter.h"
-#include "itkVectorMagnitudeImageFilter.h"
-#include "itkMorphologicalWatershedImageFilter.h"
- #include "itkTIFFImageIOFactory.h"
-
-#include "itkGradientMagnitudeRecursiveGaussianImageFilter.h"
-#include <itkThresholdImageFilter.h>
-
-
-
 // Forward declarations
 class ImageSamplerItk;
 class MooseMesh;
@@ -105,11 +87,6 @@ private:
 
   /// Physical pixel size
   std::vector<double> _voxel;
-  std::vector<double> _ratios;
-
-  /// Component to extract
-
-  unsigned int _component;
 
   /// Bounding box for testing points
   MeshTools::BoundingBox _bounding_box;

@@ -92,8 +92,6 @@ ImageMeshItk::buildMesh3D()
     _xmax /= max;
     _ymax /= max;
     _zmax /= max;
-
-
    
   }
 

@@ -1,33 +1,40 @@
+[GlobalParams]
+  dicomDirectory=/Users/sonia/Projects/internshipINL/itk_testapp/tests/image_function/new_stack/
+  cells_per_pixel_vector='0.5 0.50 1.0'  
+  filtering_params='5.0 0.125'
+
+#  file_base =brain
+#  seed_index='60 116 8'
+#  lower_upper_threshold_values='90 112'
+
+
+  file_base =brain
+  seed_index='60 116 8'
+  lower_upper_threshold_values='90 112'
+
+
+[]
+
+
+
 [Mesh]
   type = ImageMeshItk
   dim = 3
-  file_base =brain
-  dicomDirectory=/Users/sonia/Projects/internshipINL/itk_testapp/tests/image_function/new_stack/
-  cells_per_pixel_vector='1.0 1.0 1.0'  
-  filtering_params='5.0 0.125' 
-  seed_index='60 116 8'
-  lower_upper_threshold_values='90 112'
   scale_to_one=false
-
 []
 
 [Variables]
   [./u]
+    order = CONSTANT
+    family = MONOMIAL
   [../]
 []
 
 [Functions]
+
   [./image_func]
-    # ImageFunction gets its file range parameters from ImageMesh,
-    # when it is present.  This prevents duplicating information in
-    # input files.
     type = ImageFunctionItk
     dicomDirectory=/Users/sonia/Projects/internshipINL/itk_testapp/tests/image_function/new_stack/
-    file_base =brain
-    seed_index='60 116 8'
-    filtering_params='5.0 0.125' 
-    lower_upper_threshold_values='90 112'
-
   [../]
 []
 
