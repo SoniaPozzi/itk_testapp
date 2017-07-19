@@ -80,11 +80,11 @@ ImageMeshItk::buildMesh3D()
   int xpixels = 0, ypixels = 0, zpixels = 0;
 
 
-  xpixels = outputImageSize2[0], ypixels = outputImageSize2[1], zpixels =outputImageSize2[2];
+  xpixels = outputImageSize[0], ypixels = outputImageSize[1], zpixels =outputImageSize[2];
 
-  _xmax = outputImageSize2[0]*outputImageSpacing2[0];
-  _ymax = outputImageSize2[1]*outputImageSpacing2[1];
-  _zmax = outputImageSize2[2]*outputImageSpacing2[2];
+  _xmax = outputImageSize[0]*outputImageSpacing[0];
+  _ymax = outputImageSize[1]*outputImageSpacing[1];
+  _zmax = outputImageSize[2]*outputImageSpacing[2];
 
   if (_scale_to_one)
   {
