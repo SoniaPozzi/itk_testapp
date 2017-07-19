@@ -222,12 +222,12 @@ for (unsigned int i = 0; i < 3; ++i)
 
   std::cout<<"physical dim"<<_physical_dims(i)<<std::endl;
 
-  std::cout<<"croppedspacing"<<outputImageSpacing[i]<<std::endl;
- _voxel.push_back(outputImageSpacing[i]);
+  std::cout<<"croppedspacing"<<outputImageSpacing2[i]<<std::endl;
+ _voxel.push_back(outputImageSpacing2[i]);
   std::cout<<"voxel"<<_voxel[i]<<std::endl;
 }
 
-filteredImage->Update();
+filteredImage2->Update();
 
 OutputImageType::SpacingType spacing;
 
@@ -236,7 +236,7 @@ spacing[1] = _voxel[1];
 spacing[2] = _voxel[2];
 
 //filteredImage->SetSpacing(spacing);
-filteredImage->Update();
+filteredImage2->Update();
 
 OutputImageType::PointType newOrigin;
 
@@ -244,11 +244,11 @@ newOrigin[0] = _origin(0);
 newOrigin[1] = _origin(1);
 newOrigin[2] = _origin(2);
 
-filteredImage->SetOrigin(newOrigin);
-filteredImage->Update();
+filteredImage2->SetOrigin(newOrigin);
+filteredImage2->Update();
 
 
-    const OutputImageType::PointType & croppedorigin = filteredImage->GetOrigin();
+    const OutputImageType::PointType & croppedorigin = filteredImage2->GetOrigin();
     _is_console  <<"   Filterd DICOM Serie Origin moved to:    "<<  croppedorigin << std::endl;
 
 
@@ -260,7 +260,7 @@ _bounding_box.max() = _origin + _physical_dims;
     if (_is_pars.isParamValid("component"))
     {
 
-      unsigned int n =  filteredImage->GetNumberOfComponentsPerPixel();
+      unsigned int n =  filteredImage2->GetNumberOfComponentsPerPixel();
       std::cout<<"Number Of Components Per Pixel: "<< n <<std::endl;
      _component = _is_pars.get<unsigned int>("component");
 
@@ -291,10 +291,10 @@ ImageSamplerItk::sample(const Point & p)
     return 0.0;
   // Determine pixel coordinates
   std::vector<int> x(3, 0);
-  std::vector<int> res(3, 0);
-  res[0]=106;
-  res[1]=56;
-  res[2]=0;
+//  std::vector<int> res(3, 0);
+//  res[0]=55;
+//  res[1]=16;
+//  res[2]=0;
   for (int i = 0; i < LIBMESH_DIM; ++i)
   {
     // Compute position, only if voxel size is greater than zero
@@ -304,7 +304,7 @@ ImageSamplerItk::sample(const Point & p)
     {
       x[i] = std::floor((p(i) - _origin(i)) / _voxel[i]);
        // If the point falls on the mesh extents the index needs to be decreased by one
-      if (x[i] == outputImageSize[i])
+      if (x[i] >= outputImageSize2[i])
         x[i]--;
     }
   }
@@ -316,7 +316,7 @@ ImageSamplerItk::sample(const Point & p)
   pixelIndex[1]=x[1];
   pixelIndex[2]=x[2];
 
-  pixelValue = filteredImage->GetPixel(pixelIndex);
+  pixelValue = filteredImage2->GetPixel(pixelIndex);
 
     return pixelValue;
 
