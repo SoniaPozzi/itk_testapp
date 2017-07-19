@@ -3,7 +3,10 @@
   dim = 3
   file_base =brain
   dicomDirectory=/Users/sonia/Projects/internshipINL/itk_testapp/tests/image_function/new_stack/
-  cells_per_pixel_vector='1.0 1.0 1.0'   
+  cells_per_pixel_vector='1.0 1.0 1.0'  
+  filtering_params='5.0 0.125' 
+  seed_index='60 116 8'
+  lower_upper_threshold_values='90 112'
   scale_to_one=false
 
 []
@@ -21,7 +24,9 @@
     type = ImageFunctionItk
     dicomDirectory=/Users/sonia/Projects/internshipINL/itk_testapp/tests/image_function/new_stack/
     file_base =brain
-    scale_to_one=false
+    seed_index='60 116 8'
+    filtering_params='5.0 0.125' 
+    lower_upper_threshold_values='90 112'
 
   [../]
 []
