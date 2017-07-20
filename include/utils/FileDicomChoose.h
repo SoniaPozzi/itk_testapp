@@ -19,6 +19,8 @@
 #include "itkImageSeriesReader.h"
 #include "itkImageIOBase.h"
 
+#include "itkNumericSeriesFileNames.h"
+
 
 // Forward declarations
 class FileDicomChoose;
@@ -82,6 +84,7 @@ class FileDicomChoose
   typedef itk::GDCMImageIO ImageIOType;
   typedef itk::GDCMSeriesFileNames NamesGeneratorType;
   typedef std::vector< std::string > FileNamesContainer;
+
 
   ImageIOType::Pointer dicomIO = ImageIOType::New();
   ReaderType::Pointer reader = ReaderType::New();

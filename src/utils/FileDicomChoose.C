@@ -20,7 +20,7 @@
 #include "itkRegionOfInterestImageFilter.h"
 #include "itkTIFFImageIOFactory.h"
 #include "itkImageSeriesWriter.h"
-
+#include <itkFileTools.h>
 
 template <>
 InputParameters
@@ -176,18 +176,31 @@ if (_lower_upper_threshold_values[0]>_lower_upper_threshold_values[1])
 
 
       typedef itk::CastImageFilter< InternalImageType, OutputImageType > CastFilterOutType;
+      typedef itk::ImageFileWriter< OutputImageType >  WriterType;
       CastFilterOutType::Pointer casterOut = CastFilterOutType::New();
       CastFilterOutType::Pointer caster = CastFilterOutType::New();
+       
+      // Images  are written in a sequence of tiff images to help locating Seed index and pixel value
        
       caster -> SetInput(scaledImage);
       caster -> Update();
 
-      typedef itk::ImageFileWriter< OutputImageType >  WriterType;
-      WriterType::Pointer outputWriter = WriterType::New();
+     itk::FileTools::CreateDirectory("Output");
+      const ReaderType::FileNamesContainer & filenamesfin = nameGenerator -> GetFileNames( finalSeriesIdentifier );
+      unsigned int finalNumberOfFilenames =  filenamesfin.size();
+      std::string format =  std::string( "Output/" ) + std::string( _file_base ) + std::string( "-rescaled-%d.tiff" );
+      itk::NumericSeriesFileNames::Pointer fnames = itk::NumericSeriesFileNames::New();
+      fnames->SetStartIndex( 0 );
+      fnames->SetEndIndex(   finalNumberOfFilenames-1 );
+      fnames->SetIncrementIndex( 1 );
+      fnames->SetSeriesFormat( format.c_str() );
 
-      outputWriter -> SetInput( caster -> GetOutput() ); //_file_base
-      outputWriter -> SetFileName("ScaledImage.dicom" );
-      
+      typedef itk::Image< OutputPixelType, 2 > OutputImageType2d;
+      typedef itk::ImageSeriesWriter< OutputImageType, OutputImageType2d >    WriterType2d;
+      WriterType2d::Pointer outputWriter = WriterType2d::New();
+      outputWriter->SetInput( caster -> GetOutput() );
+      outputWriter->SetFileNames( fnames -> GetFileNames() );
+
       try
       {
         outputWriter -> Update();
@@ -198,7 +211,7 @@ if (_lower_upper_threshold_values[0]>_lower_upper_threshold_values[1])
       }
 
 
-      std::cout << " Open ScaledImage.tiff to see the image in rescaled gray values" << std::endl << std::endl;
+      std::cout << " Open  Output/" << _file_base << "-rescaled-#.tiff to see the images in rescaled gray scale" << std::endl << std::endl;
 
       std::cout  << "---------------------------------------------" << std::endl<<std::endl;
       std::cout  << "Applying ITK filters  " << std::endl<<std::endl;
@@ -219,6 +232,17 @@ if (_lower_upper_threshold_values[0]>_lower_upper_threshold_values[1])
       connectedThreshold -> SetReplaceValue( 255 ); //Considered threshold set to 255 (white)
       connectedThreshold -> SetInput( scaledImage ); 
 
+ 
+
+   
+
+      if ( _seed_index.size() < 1)
+      {
+
+       mooseError("Add at least a seed index for ConnectedFilterType.");
+
+      }
+
       InternalImageType::IndexType  seedIndex;
 
       seedIndex[0]=_seed_index[0];
@@ -226,12 +250,46 @@ if (_lower_upper_threshold_values[0]>_lower_upper_threshold_values[1])
       seedIndex[2]=_seed_index[2];
 
       connectedThreshold -> SetSeed( seedIndex );
-      connectedThreshold -> Update();
 
       InternalImageType::PixelType pixel_value;
       pixel_value= scaledImage->GetPixel( seedIndex ); 
 
-      std::cout   << "  selected Seed index:  " << seedIndex <<  " with Pixel Value: " << pixel_value << std::endl<<std::endl;
+      std::cout   << "  selected Seed index:  " << seedIndex <<  " with Pixel Value: " << pixel_value << std::endl;
+
+
+      if( _seed_index.size() % 3 != 0)
+      {
+       
+       mooseError("A pixel index is missing or redundant in seed_index");
+
+      }
+      else{
+
+      int numberOfSeeds = _seed_index.size()/3;
+
+ 
+      InternalImageType::IndexType  addSeedIndex;
+
+      for (unsigned i(1); i < numberOfSeeds; ++i)
+     {
+      
+      addSeedIndex[0]=_seed_index[3*i];
+      addSeedIndex[1]=_seed_index[3*i+1];
+      addSeedIndex[2]=_seed_index[3*i+2];
+
+      connectedThreshold -> AddSeed( addSeedIndex );
+
+      pixel_value= scaledImage->GetPixel( addSeedIndex ); 
+
+      std::cout   << "  selected Additional Seed index:  " << addSeedIndex <<  " with Pixel Value: " << pixel_value << std::endl;
+
+}
+      }
+
+      std::cout<<std::endl;
+      
+      connectedThreshold -> Update();
+
 
       /// Cast filter to convert from float to unsigned char
 
@@ -278,11 +336,10 @@ if (_lower_upper_threshold_values[0]>_lower_upper_threshold_values[1])
   
       /// Visualize the results of the filtering and cropping writing a tiff image
       
-   
       WriterType::Pointer writer = WriterType::New();
-
       writer -> SetInput( filteredImage ); //_file_base
-      writer -> SetFileName("FilteredAndCropped.tiff" );
+      std::string name = std::string( "Output/" ) + std::string( _file_base ) + std::string( "-filtered-and-cropped.tiff" );
+      writer -> SetFileName( name );
       
       try
       {
@@ -292,8 +349,8 @@ if (_lower_upper_threshold_values[0]>_lower_upper_threshold_values[1])
       {
         mooseError("Exception in file writer");
       }
-
-      std::cout << " Open FilteredAndCropped.tiff to see the filtered and cropped image " << std::endl << std::endl;
+    
+     std::cout << " Open  Output/" << _file_base <<"-filtered-and-cropped.tiff to see the filtered and cropped DICOM Series" << std::endl << std::endl;
       std::cout  <<"---------------------------------------------" << std::endl;
       std::cout << "---------------------------------------------" << std::endl;
     }
