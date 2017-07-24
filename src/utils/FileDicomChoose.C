@@ -23,6 +23,8 @@
 #include "itkNeighborhoodConnectedImageFilter.h"
 #include "itkConfidenceConnectedImageFilter.h"
 #include <itkFileTools.h>
+#include "itkSiemensVisionImageIOFactory.h"
+//#include "itkDCMTKFileReader.h"
 
 template <>
 InputParameters
@@ -71,6 +73,8 @@ if (_lower_upper_threshold_values[0]>_lower_upper_threshold_values[1])
     
     /// Reading all the series in the folder to check if there is the one related to _file_base
     reader -> SetImageIO( dicomIO );
+
+
     nameGenerator -> SetUseSeriesDetails( true );
     nameGenerator -> SetDirectory( _dicomDirectory );
 
@@ -79,82 +83,144 @@ if (_lower_upper_threshold_values[0]>_lower_upper_threshold_values[1])
     SeriesIdContainer::const_iterator seriesItr = seriesUID.begin();
     SeriesIdContainer::const_iterator seriesEnd = seriesUID.end();
 
-    bool ret_value = false;
+  // if  ( 1 ){ //if conosco il nome del file
+  //     bool ret_value = false;
 
-    while( seriesItr != seriesEnd && ret_value==false )
+  //     while( seriesItr != seriesEnd && ret_value==false )
+  //     {
+  //       const ReaderType::FileNamesContainer & filenames = nameGenerator->GetFileNames( seriesItr -> c_str() );
+  //       unsigned int numberOfFilenames =  filenames.size();
+        
+  //       for(unsigned int fni = 0; fni<numberOfFilenames; fni++)
+  //       {
+  //         std::string seriesName=filenames[fni];
+  //         if (seriesName.find(_file_base) != std::string::npos) 
+  //         {
+
+  //           std::cout << "The directory: " << _dicomDirectory << std::endl;  
+  //           std::cout << "contains the DICOM Series related to '" <<  _file_base << "'!" << std::endl;
+  //           std::cout << "'The DICOM Series is: " << seriesItr -> c_str() << std::endl;
+  //           std::cout <<  "There are "<< numberOfFilenames << " files in Serie: " << std::endl;
+        
+  //           reader -> SetFileNames(filenames);
+
+
+  //           finalSeriesIdentifier = seriesItr -> c_str();
+  //           ret_value = true;
+      
+  //           for(unsigned int fni = 0; fni<numberOfFilenames; fni++)
+  //          {
+
+  //           std::string seriesName = filenames[fni];
+  //           std::cout << "          # " << fni << " Filename = " << seriesName << std::endl;
+            
+  //           }
+    
+  //           break;
+
+  //         }
+  //       }
+
+  //       ++seriesItr;
+  //     }
+   
+
+
+  //     /// In case the related series is not found, elencate the series available and give an error
+
+  //     if(!ret_value)
+  //     {  
+  //       seriesItr = seriesUID.begin();
+  //       mooseWarning("");
+  //       std::cout << "The directory: " << _dicomDirectory << std::endl;  
+  //       std::cout << "does not contain the DICOM Series related to '"<< _file_base<<"'! It has the following: "<<std::endl;
+        
+  //       while( seriesItr != seriesEnd )
+  //      {     
+
+  //         const ReaderType::FileNamesContainer & filenames = nameGenerator->GetFileNames(seriesItr->c_str());
+  //         unsigned int numberOfFilenames =  filenames.size();
+  //         std::cout <<std::endl;
+  //         std::cout <<  "DICOM Series: " << seriesItr->c_str() <<";   Files in Serie   " << numberOfFilenames << std::endl;
+                      
+  //         for(unsigned int fni = 0; fni<numberOfFilenames; fni++)
+  //           { 
+  //             std::string seriesName=filenames[fni];
+  //             std::cout << "          # " << fni << " Filename = " << seriesName << std::endl; 
+  //           }   
+
+  //           ++seriesItr;
+
+  //           }
+
+  //         mooseError("Set file_base to a filename in the DICOM series to use.");
+  //       }
+  //      }
+  //  else{   //non conosco il nome del file
+
+      JoinSeriesImageFilterType::Pointer joinFilter = JoinSeriesImageFilterType::New();
+      joinFilter->SetOrigin(0.0);
+     // joinFilter->SetSpacing(1.0);
+     //  joinFilter->SetOrigin( reader->GetOutput()->GetOrigin()[2] );
+     //joinFilter->SetSpacing( reader->GetOutput()->GetSpacing()[2] );
+      ImageTypecast::Pointer toReal = ImageTypecast::New();
+      ReaderType::Pointer reader = ReaderType::New();
+      reader -> SetImageIO( dicomIO );
+
+
+
+  int slice=0;
+
+    while( seriesItr != seriesEnd)
     {
       const ReaderType::FileNamesContainer & filenames = nameGenerator->GetFileNames( seriesItr -> c_str() );
       unsigned int numberOfFilenames =  filenames.size();
+
+       ShortImageType::Pointer inputImage;
+           ShortImageType2D::Pointer toRealImage;
       
-      for(unsigned int fni = 0; fni<numberOfFilenames; fni++)
-      {
-        std::string seriesName=filenames[fni];
-        if (seriesName.find(_file_base) != std::string::npos) 
-        {
+      for(unsigned int fni = 0; fni<1; fni++)
+      {   
 
-          std::cout << "The directory: " << _dicomDirectory << std::endl;  
-          std::cout << "contains the DICOM Series related to '" <<  _file_base << "'!" << std::endl;
-          std::cout << "'The DICOM Series is: " << seriesItr -> c_str() << std::endl;
-          std::cout <<  "There are "<< numberOfFilenames << " files in Serie: " << std::endl;
+
+        std::string seriesName = filenames[fni];
+        std::cout << "          # " << fni << " Filename = " << seriesName << std::endl;
+
+        reader->SetFileName(filenames[fni]);
+        reader->Update();
+        inputImage = reader->GetOutput();
+
+        toReal->SetInput( inputImage );
+        toReal->Update();
+        toRealImage = toReal->GetOutput();
+
+        std::cout << toRealImage->GetBufferedRegion()<<'\t';//test whether we can get input
+
+        joinFilter->SetInput(slice,toRealImage);
+        slice++;
+        inputImage->DisconnectPipeline();
+        toRealImage->DisconnectPipeline();
+   
+       }
+           
       
-          reader -> SetFileNames(filenames);
-          finalSeriesIdentifier = seriesItr -> c_str();
-          ret_value = true;
-    
-          for(unsigned int fni = 0; fni<numberOfFilenames; fni++)
-         {
-
-          std::string seriesName = filenames[fni];
-          std::cout << "          # " << fni << " Filename = " << seriesName << std::endl;
-          
-          }
-  
-          break;
-
-        }
-      }
-
       ++seriesItr;
     }
+       mooseWarning("Join series togheter!");
 
-    /// In case the related series is not found, elencate the series available and give an error
 
-    if(!ret_value)
-    {  
-      seriesItr = seriesUID.begin();
-      mooseWarning("");
-      std::cout << "The directory: " << _dicomDirectory << std::endl;  
-      std::cout << "does not contain the DICOM Series related to '"<< _file_base<<"'! It has the following: "<<std::endl;
-      
-      while( seriesItr != seriesEnd )
-     {     
 
-        const ReaderType::FileNamesContainer & filenames = nameGenerator->GetFileNames(seriesItr->c_str());
-        unsigned int numberOfFilenames =  filenames.size();
-        std::cout <<std::endl;
-        std::cout <<  "DICOM Series: " << seriesItr->c_str() <<";   Files in Serie   " << numberOfFilenames << std::endl;
-                    
-        for(unsigned int fni = 0; fni<numberOfFilenames; fni++)
-          { 
-            std::string seriesName=filenames[fni];
-            std::cout << "          # " << fni << " Filename = " << seriesName << std::endl; 
-          }   
-
-          ++seriesItr;
-
-          }
-
-        mooseError("Set file_base to a filename in the DICOM series to use.");
-      }
+  //  }
 
       std::cout << std::endl;  
 
-      reader->Update();  
+      joinFilter->Update();
+ 
       std::cout  << "---------------------------------------------" << std::endl<<std::endl;
       std::cout << " Reading the DICOM Series of interest  " << std::endl << std::endl;
-      std::cout << "   DICOM Serie Dimension:    " << reader -> GetOutput() -> GetLargestPossibleRegion().GetSize() << std::endl;
-      std::cout << "   DICOM Serie Spacing:      " << reader -> GetOutput() -> GetSpacing() << std::endl;
-      std::cout << "   DICOM Serie Origin:       " << reader -> GetOutput() -> GetOrigin() << std::endl << std::endl;
+      std::cout << "   DICOM Serie Dimension:    " << joinFilter -> GetOutput() -> GetLargestPossibleRegion().GetSize() << std::endl;
+      std::cout << "   DICOM Serie Spacing:      " << joinFilter -> GetOutput() -> GetSpacing() << std::endl;
+      std::cout << "   DICOM Serie Origin:       " << joinFilter -> GetOutput() -> GetOrigin() << std::endl << std::endl;
  
       /// Cast filter to convert from short data type to float data type
 
@@ -166,7 +232,7 @@ if (_lower_upper_threshold_values[0]>_lower_upper_threshold_values[1])
       
       /// Castering from short to float data typpe requires rescale
 
-      castFilter -> SetInput( reader -> GetOutput() );
+      castFilter -> SetInput( joinFilter -> GetOutput() );
 
       rescaler -> SetOutputMinimum(   0 );
       rescaler -> SetOutputMaximum( 255 ); //255 means white
@@ -188,8 +254,12 @@ if (_lower_upper_threshold_values[0]>_lower_upper_threshold_values[1])
       caster -> Update();
 
      itk::FileTools::CreateDirectory("Output");
-      const ReaderType::FileNamesContainer & filenamesfin = nameGenerator -> GetFileNames( finalSeriesIdentifier );
-      unsigned int finalNumberOfFilenames =  filenamesfin.size();
+     
+    // const ReaderType::FileNamesContainer & filenamesfin = nameGenerator -> GetFileNames( finalSeriesIdentifier );
+     // unsigned int finalNumberOfFilenames =  filenamesfin.size();
+     
+  unsigned int finalNumberOfFilenames =  slice;
+     
       std::string format =  std::string( "Output/" ) + std::string( _file_base ) + std::string( "-rescaled-%d.tiff" );
       itk::NumericSeriesFileNames::Pointer fnames = itk::NumericSeriesFileNames::New();
       fnames->SetStartIndex( 0 );

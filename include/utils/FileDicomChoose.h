@@ -14,12 +14,16 @@
 #include <iostream>
 
 // itk includes
+#include "itkJoinSeriesImageFilter.h"
 #include "itkGDCMImageIO.h"
 #include "itkGDCMSeriesFileNames.h"
 #include "itkImageSeriesReader.h"
 #include "itkImageIOBase.h"
-
 #include "itkNumericSeriesFileNames.h"
+
+#include "itkTileImageFilter.h"
+#include <itkCastImageFilter.h>
+//#include "itkDCMTKImageIO.h"
 
 
 // Forward declarations
@@ -79,8 +83,12 @@ class FileDicomChoose
   typedef itk::Image< ShortPixelType ,  3 >      ShortImageType;
   typedef itk::Image< FloatPixelType ,  3 >      InternalImageType;
   typedef itk::Image< OutputPixelType , 3 >      OutputImageType;
+  typedef itk::Image< ShortPixelType ,  2 >      ShortImageType2D;
 
   typedef itk::ImageSeriesReader< ShortImageType > ReaderType;
+  typedef itk::TileImageFilter<ShortImageType2D, ShortImageType> TileImageFilter;
+  typedef itk::CastImageFilter<ShortImageType,ShortImageType2D>  ImageTypecast;
+  typedef itk::JoinSeriesImageFilter<ShortImageType2D, ShortImageType> JoinSeriesImageFilterType;
   typedef itk::GDCMImageIO ImageIOType;
   typedef itk::GDCMSeriesFileNames NamesGeneratorType;
   typedef std::vector< std::string > FileNamesContainer;
@@ -88,6 +96,7 @@ class FileDicomChoose
 
   ImageIOType::Pointer dicomIO = ImageIOType::New();
   ReaderType::Pointer reader = ReaderType::New();
+  TileImageFilter::Pointer tiler = TileImageFilter::New();
   NamesGeneratorType::Pointer nameGenerator = NamesGeneratorType::New();
   FileNamesContainer fileNames;
   std::string finalSeriesIdentifier;
