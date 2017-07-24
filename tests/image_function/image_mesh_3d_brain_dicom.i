@@ -1,7 +1,7 @@
 [GlobalParams]
-  dicomDirectory=/Users/sonia/Projects/internshipINL/itk_testapp/tests/image_function/new_stack/       #CRT001/
+  dicomDirectory=/Users/sonia/Projects/internshipINL/itk_testapp/tests/image_function/new_stack/CRT001/
   cells_per_pixel_vector='1.0 1.0 2.0'  
-  filtering_params='0.0 0.125'
+  filtering_params='5.0 0.125'
 
 # file_base =shoulder
 # seed_index='261 257 8  '
@@ -12,9 +12,9 @@
   seed_index='128 54 19   177 90 19   87 76 19   85 65 18   174 67 18   67 107 18    91 48 17  61 98 17   179 59 17  114 30 16   69 67 16   178 51 16   178 48 16 198 73 15 129 26 15   75 50 15     182 48 15   127 22 14   86 30 13    97 18 12  124 15 12  133 13 11    111 39 7   167 56 7   '
   lower_upper_threshold_values='123 255'
 
-#  file_base =MR00
-#  seed_index='138 71 4'
-#  lower_upper_threshold_values='23 40.3'
+  file_base =bran
+  seed_index='61 86 4'
+  lower_upper_threshold_values='23 46'
 
 []
 

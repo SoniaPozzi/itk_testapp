@@ -20,6 +20,8 @@
 #include "itkRegionOfInterestImageFilter.h"
 #include "itkTIFFImageIOFactory.h"
 #include "itkImageSeriesWriter.h"
+#include "itkNeighborhoodConnectedImageFilter.h"
+#include "itkConfidenceConnectedImageFilter.h"
 #include <itkFileTools.h>
 
 template <>
@@ -219,8 +221,16 @@ if (_lower_upper_threshold_values[0]>_lower_upper_threshold_values[1])
 
       typedef itk::CurvatureFlowImageFilter< InternalImageType, InternalImageType > CurvatureFlowImageFilterType;
       typedef itk::ConnectedThresholdImageFilter< InternalImageType, InternalImageType > ConnectedFilterType;
+      typedef itk::NeighborhoodConnectedImageFilter<InternalImageType, InternalImageType > NeighborhoodConnectedFilterType;
+
+      typedef itk::ConfidenceConnectedImageFilter<InternalImageType, InternalImageType > ConfidenceonnectedFilterType;
+
       CurvatureFlowImageFilterType::Pointer smoothing = CurvatureFlowImageFilterType::New();
       ConnectedFilterType::Pointer connectedThreshold = ConnectedFilterType::New();
+       NeighborhoodConnectedFilterType::Pointer neighborhoodConnectedThreshold = NeighborhoodConnectedFilterType::New();
+    ConfidenceonnectedFilterType::Pointer confidenceConnectedThreshold = ConfidenceonnectedFilterType::New();
+
+   
 
       smoothing -> SetNumberOfIterations( _filtering_params[0] ); 
       smoothing -> SetTimeStep( _filtering_params[1]  );
@@ -232,9 +242,9 @@ if (_lower_upper_threshold_values[0]>_lower_upper_threshold_values[1])
       connectedThreshold -> SetReplaceValue( 255 ); //Considered threshold set to 255 (white)
       connectedThreshold -> SetInput( scaledImage ); 
 
- 
 
-   
+
+      
 
       if ( _seed_index.size() < 1)
       {
@@ -250,6 +260,7 @@ if (_lower_upper_threshold_values[0]>_lower_upper_threshold_values[1])
       seedIndex[2]=_seed_index[2];
 
       connectedThreshold -> SetSeed( seedIndex );
+  
 
       InternalImageType::PixelType pixel_value;
       pixel_value= scaledImage->GetPixel( seedIndex ); 
@@ -279,17 +290,17 @@ if (_lower_upper_threshold_values[0]>_lower_upper_threshold_values[1])
 
       connectedThreshold -> AddSeed( addSeedIndex );
 
+
       pixel_value= scaledImage->GetPixel( addSeedIndex ); 
 
       std::cout   << "  selected Additional Seed index:  " << addSeedIndex <<  " with Pixel Value: " << pixel_value << std::endl;
 
-}
+     }
       }
 
       std::cout<<std::endl;
       
       connectedThreshold -> Update();
-
 
       /// Cast filter to convert from float to unsigned char
 
