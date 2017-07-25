@@ -251,12 +251,12 @@ typedef itk::NumericSeriesFileNames    NameGeneratorType;
       inputImageTile_types.push_back(ShortImageType2D::New());
 
       inputImageTile_types[fni]=extract_types[fni]->GetOutput();
-      //inputImageTile_types[fni]->Allocate();
+      inputImageTile_types[fni]->Allocate();
 
       std::cout<<"Slice Dicom size" <<inputImageTile_types[fni]->GetLargestPossibleRegion()<<std::endl;
 
       joinFilter->SetInput(inputImageNumber++,inputImageTile_types[fni]);
-      //joinFilter->Update();
+      
 
     }
        joinFilter->Update();
