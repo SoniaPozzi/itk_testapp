@@ -181,7 +181,7 @@ typedef itk::NumericSeriesFileNames    NameGeneratorType;
 
   nameGenerator->SetSeriesFormat( _dicomDirectory+"MR000000_%d.dcm" );
   nameGenerator->SetStartIndex( 4 );
-  nameGenerator->SetEndIndex( 6);
+  nameGenerator->SetEndIndex(5);
   nameGenerator->SetIncrementIndex( 1 );
   std::vector<std::string> names = nameGenerator->GetFileNames();
 
@@ -204,22 +204,27 @@ typedef itk::NumericSeriesFileNames    NameGeneratorType;
     reader -> SetImageIO( dicomIO );
 
 
-    ShortImageType2D::Pointer inputImageTile=ShortImageType2D::New();
-    ShortImageType::RegionType desiredRegion;
+
     
-    std::vector<ShortImageType::RegionType> region_types(2);
-    std::vector<ShortImageType::SizeType>    size_types(2);
-    std::vector<ShortImageType::IndexType> start_types(2);
+    std::vector<ShortImageType::RegionType> region_types(names.size());
+    std::vector<ShortImageType::SizeType>    size_types(names.size());
+    std::vector<ShortImageType::IndexType> start_types(names.size());
+    std::vector<ShortImageType::RegionType> desiredRegion_types(names.size());
     std::vector<ReaderType::Pointer> reader_types;
     std::vector<FilterType::Pointer> extract_types;
+    std::vector<ShortImageType2D::Pointer> inputImageTile_types;
+
     const unsigned int sliceNumber = 0;
 
     for(unsigned int fni = 0; fni<names.size(); fni++)
     {  
-      reader->SetFileName( names[fni]);
-      reader->UpdateLargestPossibleRegion();
-      reader->UpdateOutputInformation();
-      reader->Update();
+
+      reader_types.push_back(ReaderType::New());
+      reader -> SetImageIO( dicomIO );
+      reader-> SetFileName( names[fni]);
+      reader-> UpdateLargestPossibleRegion();
+      reader-> UpdateOutputInformation();
+      reader-> Update();
 
       region_types[fni] = reader->GetOutput()->GetLargestPossibleRegion();
 
@@ -235,31 +240,32 @@ typedef itk::NumericSeriesFileNames    NameGeneratorType;
 
       start_types[fni][2] = sliceNumber;
 
-      desiredRegion.SetSize( size_types[fni] ); 
-      desiredRegion.SetIndex( start_types[fni] );
+      desiredRegion_types[fni].SetSize( size_types[fni] ); 
+      desiredRegion_types[fni].SetIndex( start_types[fni] );
 
       extract_types[fni]->SetInput(   reader->GetOutput());
-      extract_types[fni]->SetExtractionRegion( desiredRegion );
+      extract_types[fni]->SetExtractionRegion( desiredRegion_types[fni] );
       extract_types[fni]->Update();
 
-      inputImageTile=extract_types[fni]->GetOutput();
-      inputImageTile->Allocate();
 
-      std::cout<<"Slice Dicom size" <<inputImageTile->GetLargestPossibleRegion()<<std::endl;
+      inputImageTile_types.push_back(ShortImageType2D::New());
 
-      joinFilter->SetInput(inputImageNumber++,inputImageTile);
-      joinFilter->Update();
+      inputImageTile_types[fni]=extract_types[fni]->GetOutput();
+      //inputImageTile_types[fni]->Allocate();
+
+      std::cout<<"Slice Dicom size" <<inputImageTile_types[fni]->GetLargestPossibleRegion()<<std::endl;
+
+      joinFilter->SetInput(inputImageNumber++,inputImageTile_types[fni]);
+      //joinFilter->Update();
 
     }
-      
+       joinFilter->Update();
  
-     // joinFilter->Update();
-
-          ShortImageType::Pointer newDicom=ShortImageType::New();
-
+      ShortImageType::Pointer newDicom=ShortImageType::New();
+     
       newDicom= joinFilter -> GetOutput();
 
- 
+
 
  
       std::cout  << "---------------------------------------------" << std::endl<<std::endl;
