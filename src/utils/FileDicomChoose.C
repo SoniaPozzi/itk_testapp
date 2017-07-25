@@ -163,12 +163,6 @@ if (_lower_upper_threshold_values[0]>_lower_upper_threshold_values[1])
   //      }
   //  else{   //non conosco il nome del file
 
-      JoinSeriesImageFilterType::Pointer joinFilter = JoinSeriesImageFilterType::New();
-      joinFilter->SetOrigin(0.0);
-    joinFilter->SetSpacing(1.0);
-      joinFilter->SetOrigin( reader->GetOutput()->GetOrigin()[2] );
-     joinFilter->SetSpacing( reader->GetOutput()->GetSpacing()[2] );
-      reader -> SetImageIO( dicomIO );
 
   int slice=0;
 
@@ -180,180 +174,124 @@ FilterType::Pointer extract = FilterType::New();
 extract->InPlaceOn();
 extract->SetDirectionCollapseToSubmatrix();
 
-typedef itk::ImageFileWriter< ShortImageType2D > WriterTypeSlice;
-WriterTypeSlice::Pointer writerSlice = WriterTypeSlice::New();
-
 unsigned int inputImageNumber = 0;
-
-    // while( seriesItr != seriesEnd)
-    // {
-    //   const ReaderType::FileNamesContainer & filenames = nameGenerator->GetFileNames(seriesItr->c_str());
-  
-    //    unsigned int numberOfFilenames =  filenames.size();
-
-    //    ShortImageType::Pointer inputImage;
-    //        ShortImageType2D::Pointer toRealImage;
-      
-    // for(unsigned int fni = 0; fni<1; fni++)
-    //  {   
-
-
-    //      std::cout << "          #  Filename = " << filenames[0] << std::endl;
-    
 typedef itk::NumericSeriesFileNames    NameGeneratorType;
- 
-  NameGeneratorType::Pointer nameGenerator2 = NameGeneratorType::New();
- 
-  nameGenerator2->SetSeriesFormat( _dicomDirectory+"MR000000_%d.dcm" );
- 
-  nameGenerator2->SetStartIndex( 4 );
-  nameGenerator2->SetEndIndex( 6);
-  nameGenerator2->SetIncrementIndex( 1 );
 
-     //nameGenerator2 -> SetDirectory( _dicomDirectory );
-  std::vector<std::string> names2 = nameGenerator2->GetFileNames();
- 
+  NameGeneratorType::Pointer nameGenerator = NameGeneratorType::New();
+
+  nameGenerator->SetSeriesFormat( _dicomDirectory+"MR000000_%d.dcm" );
+  nameGenerator->SetStartIndex( 4 );
+  nameGenerator->SetEndIndex( 6);
+  nameGenerator->SetIncrementIndex( 1 );
+  std::vector<std::string> names = nameGenerator->GetFileNames();
+
   // List the files
-  //
+
   std::vector<std::string>::iterator nit;
-  for (nit = names2.begin();
-       nit != names2.end();
+  for (nit = names.begin();
+       nit != names.end();
        nit++)
     {
     std::cout << "File: " << (*nit).c_str() << std::endl;
     }
 
- // for(unsigned int fni = 0; fni<2; fni++)
- //      {   
 
-  //ReaderType::Pointer reader13 = ReaderType::New();
-
-   
-    reader->SetFileName( names2[0]);
-    reader->UpdateLargestPossibleRegion();
-    reader->UpdateOutputInformation();
-    reader->Update();
-   
-   std::vector<ShortImageType::RegionType> region_types(2);
-    std::vector<ShortImageType::SizeType> size_types(2);
-    std::vector<ShortImageType::IndexType> start_types(2);
-    std::vector<FilterType::Pointer> extract_types;
-
-    ShortImageType::RegionType inputRegion = reader->GetOutput()->GetLargestPossibleRegion();
-
-    std::cout<< inputRegion<<std::endl;
-    ShortImageType::SizeType size = inputRegion.GetSize();
-    size[2] = 0;
-    ShortImageType::IndexType start = inputRegion.GetIndex();
-    const unsigned int sliceNumber = 0;
-    start[2] = sliceNumber;
-
-   ShortImageType::RegionType desiredRegion;
-    desiredRegion.SetSize( size ); 
-    desiredRegion.SetIndex( start );
-    extract->SetInput(   reader->GetOutput());
-    extract->SetExtractionRegion( desiredRegion );
-    extract->Update();
-
-      ShortImageType2D::Pointer inputImageTile=ShortImageType2D::New();
-      inputImageTile = extract->GetOutput();
-      inputImageTile->Allocate();
-    std::cout<<inputImageTile->GetLargestPossibleRegion()<<std::endl;
+    JoinSeriesImageFilterType::Pointer joinFilter = JoinSeriesImageFilterType::New();
+    joinFilter->SetOrigin(0.0);
+    joinFilter->SetSpacing(1.0);
+    joinFilter->SetOrigin( reader->GetOutput()->GetOrigin()[2] );
+    joinFilter->SetSpacing( reader->GetOutput()->GetSpacing()[2] );
+    reader -> SetImageIO( dicomIO );
 
 
-     joinFilter->SetInput(inputImageNumber++,inputImageTile);
-
-
-    reader->SetFileName( names2[1]);
-    reader->UpdateLargestPossibleRegion();
-    reader->UpdateOutputInformation();
-    reader->Update();
-
-    region_types[1] = reader->GetOutput()->GetLargestPossibleRegion();
-
-extract_types.push_back(FilterType::New());
-extract_types.push_back(FilterType::New());
-
-     extract_types[1]->InPlaceOn();
-     extract_types[1]->SetDirectionCollapseToSubmatrix();
-std::cout<<"Sono qui"<<std::endl;
-     size_types[1] = region_types[1].GetSize();
-    start_types[1] = region_types[1].GetIndex();
-    size_types[1][2] = 0;
-
-    start_types[1][2] = sliceNumber;
-
-    desiredRegion.SetSize( size_types[1] ); 
-
-
-    desiredRegion.SetIndex( start_types[1] );
-
-
-
-    extract_types[1]->SetInput(   reader->GetOutput());
-    extract_types[1]->SetExtractionRegion( desiredRegion );
-    extract_types[1]->Update();
-
-    inputImageTile=extract_types[1]->GetOutput();
-    inputImageTile->Allocate();
-
-std::cout<< inputImageTile->GetLargestPossibleRegion()<<std::endl;
-
-    std::cout<<inputImageTile->GetLargestPossibleRegion()<<std::endl;
-
-
-   joinFilter->SetInput(inputImageNumber++,inputImageTile);
-
-
-   // }
-      
-      
-  //    ++seriesItr;
-
- 
-  //      mooseWarning("Join series togheter!");
-
-  // }
-
-
-   // ShortPixelType filler = 128;
- 
- // tiler->SetDefaultPixelValue( filler );
- 
- // tiler->Update();
- joinFilter->Update();
- 
-
-
+    ShortImageType2D::Pointer inputImageTile=ShortImageType2D::New();
+    ShortImageType::RegionType desiredRegion;
     
+    std::vector<ShortImageType::RegionType> region_types(2);
+    std::vector<ShortImageType::SizeType>    size_types(2);
+    std::vector<ShortImageType::IndexType> start_types(2);
+    std::vector<ReaderType::Pointer> reader_types;
+    std::vector<FilterType::Pointer> extract_types;
+    const unsigned int sliceNumber = 0;
+
+    for(unsigned int fni = 0; fni<names.size(); fni++)
+    {  
+      reader->SetFileName( names[fni]);
+      reader->UpdateLargestPossibleRegion();
+      reader->UpdateOutputInformation();
+      reader->Update();
+
+      region_types[fni] = reader->GetOutput()->GetLargestPossibleRegion();
+
+      std::cout<<"Dicom size"<<reader->GetOutput()->GetLargestPossibleRegion()<<std::endl;
+      extract_types.push_back(FilterType::New());
+
+      extract_types[fni]->InPlaceOn();
+      extract_types[fni]->SetDirectionCollapseToSubmatrix();
+
+      size_types[fni] = region_types[fni].GetSize();
+      start_types[fni] = region_types[fni].GetIndex();
+      size_types[fni][2] = 0;
+
+      start_types[fni][2] = sliceNumber;
+
+      desiredRegion.SetSize( size_types[fni] ); 
+      desiredRegion.SetIndex( start_types[fni] );
+
+      extract_types[fni]->SetInput(   reader->GetOutput());
+      extract_types[fni]->SetExtractionRegion( desiredRegion );
+      extract_types[fni]->Update();
+
+      inputImageTile=extract_types[fni]->GetOutput();
+      inputImageTile->Allocate();
+
+      std::cout<<"Slice Dicom size" <<inputImageTile->GetLargestPossibleRegion()<<std::endl;
+
+      joinFilter->SetInput(inputImageNumber++,inputImageTile);
+      joinFilter->Update();
+
+    }
+      
+ 
+     // joinFilter->Update();
+
+          ShortImageType::Pointer newDicom=ShortImageType::New();
+
+      newDicom= joinFilter -> GetOutput();
+
+ 
 
  
       std::cout  << "---------------------------------------------" << std::endl<<std::endl;
       std::cout << " Reading the DICOM Series of interest  " << std::endl << std::endl;
-      std::cout << "   DICOM Serie Dimension:    " << joinFilter -> GetOutput() -> GetLargestPossibleRegion().GetSize() << std::endl;
-      std::cout << "   DICOM Serie Spacing:      " << joinFilter -> GetOutput() -> GetSpacing() << std::endl;
-      std::cout << "   DICOM Serie Origin:       " << joinFilter -> GetOutput() -> GetOrigin() << std::endl << std::endl;
+      std::cout << "   DICOM Serie Dimension:    " << newDicom -> GetLargestPossibleRegion().GetSize() << std::endl;
+      std::cout << "   DICOM Serie Spacing:      " << newDicom -> GetSpacing() << std::endl;
+      std::cout << "   DICOM Serie Origin:       " << newDicom -> GetOrigin() << std::endl << std::endl;
  
       /// Cast filter to convert from short data type to float data type
-
       typedef itk::CastImageFilter< ShortImageType, InternalImageType > CastFilterType;
       typedef itk::RescaleIntensityImageFilter<   InternalImageType, InternalImageType > RescaleFilterType;
       CastFilterType::Pointer castFilter = CastFilterType::New();
       RescaleFilterType::Pointer rescaler = RescaleFilterType::New();
       InternalImageType::Pointer scaledImage = InternalImageType::New();
       
+
+
+
       /// Castering from short to float data typpe requires rescale
 
-      castFilter -> SetInput( joinFilter -> GetOutput() );
+      castFilter -> SetInput( newDicom );
+
 
       rescaler -> SetOutputMinimum(   0 );
       rescaler -> SetOutputMaximum( 255 ); //255 means white
+    
       rescaler -> SetInput( castFilter -> GetOutput() );
-
+     
       scaledImage = rescaler -> GetOutput();
       scaledImage -> GetLargestPossibleRegion();
       scaledImage -> Update(); 
-
+      
 
       typedef itk::CastImageFilter< InternalImageType, OutputImageType > CastFilterOutType;
       typedef itk::ImageFileWriter< OutputImageType >  WriterType;
@@ -361,29 +299,31 @@ std::cout<< inputImageTile->GetLargestPossibleRegion()<<std::endl;
       CastFilterOutType::Pointer caster = CastFilterOutType::New();
        
       // Images  are written in a sequence of tiff images to help locating Seed index and pixel value
-       
+      
       caster -> SetInput(scaledImage);
       caster -> Update();
 
      itk::FileTools::CreateDirectory("Output");
      
-    // const ReaderType::FileNamesContainer & filenamesfin = nameGenerator -> GetFileNames( finalSeriesIdentifier );
-     // unsigned int finalNumberOfFilenames =  filenamesfin.size();
+    // const ReaderType::FileNamesContainer & names = nameGenerator -> GetFileNames( finalSeriesIdentifier );
+      unsigned int finalNumberOfFilenames =  names.size();
      
-  unsigned int finalNumberOfFilenames =  slice;
      
       std::string format =  std::string( "Output/" ) + std::string( _file_base ) + std::string( "-rescaled-%d.tiff" );
-      itk::NumericSeriesFileNames::Pointer fnames = itk::NumericSeriesFileNames::New();
-      fnames->SetStartIndex( 0 );
-      fnames->SetEndIndex(   finalNumberOfFilenames-1 );
-      fnames->SetIncrementIndex( 1 );
-      fnames->SetSeriesFormat( format.c_str() );
+       itk::NumericSeriesFileNames::Pointer fnames = itk::NumericSeriesFileNames::New();
+       fnames->SetStartIndex( 0 );
+       fnames->SetEndIndex(   finalNumberOfFilenames-1 );
+       fnames->SetIncrementIndex( 1 );
+       fnames->SetSeriesFormat( format.c_str() );
+
+       std::cout<<"sono quoooo"<<std::endl;
 
       typedef itk::Image< OutputPixelType, 2 > OutputImageType2d;
       typedef itk::ImageSeriesWriter< OutputImageType, OutputImageType2d >    WriterType2d;
       WriterType2d::Pointer outputWriter = WriterType2d::New();
       outputWriter->SetInput( caster -> GetOutput() );
-      outputWriter->SetFileNames( fnames -> GetFileNames() );
+      outputWriter->SetFileNames( fnames->GetFileNames() );
+std::cout<<"sono quiiiiii"<<std::endl;
 
       try
       {
@@ -393,7 +333,7 @@ std::cout<< inputImageTile->GetLargestPossibleRegion()<<std::endl;
       {
         mooseError("Exception in file writer");
       }
-
+std::cout<<"sono qui"<<std::endl;
 
  //      std::cout << " Open  Output/" << _file_base << "-rescaled-#.tiff to see the images in rescaled gray scale" << std::endl << std::endl;
 

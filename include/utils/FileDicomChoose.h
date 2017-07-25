@@ -87,7 +87,6 @@ class FileDicomChoose
 
   typedef itk::ImageSeriesReader< ShortImageType > ReaderType;
     typedef itk::ImageSeriesReader< ShortImageType2D > ReaderType2;
-  typedef itk::TileImageFilter<ShortImageType2D, ShortImageType> TileImageFilter;
   typedef itk::CastImageFilter<ShortImageType,ShortImageType2D>  ImageTypecast;
   typedef itk::JoinSeriesImageFilter<ShortImageType2D, ShortImageType> JoinSeriesImageFilterType;
   typedef itk::GDCMImageIO ImageIOType;
@@ -97,7 +96,6 @@ class FileDicomChoose
 
   ImageIOType::Pointer dicomIO = ImageIOType::New();
   ReaderType::Pointer reader = ReaderType::New();
-  TileImageFilter::Pointer tiler = TileImageFilter::New();
   NamesGeneratorType::Pointer nameGenerator = NamesGeneratorType::New();
   FileNamesContainer fileNames;
   std::string finalSeriesIdentifier;
