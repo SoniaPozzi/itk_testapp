@@ -20,11 +20,10 @@
 #include "itkImageSeriesReader.h"
 #include "itkImageIOBase.h"
 #include "itkNumericSeriesFileNames.h"
-
+#include "itkDICOMSeriesFileNames.h"
 #include "itkTileImageFilter.h"
 #include <itkCastImageFilter.h>
-//#include "itkDCMTKImageIO.h"
-
+#include "DICOMAppHelper.h"
 
 // Forward declarations
 class FileDicomChoose;
@@ -83,9 +82,11 @@ class FileDicomChoose
   typedef itk::Image< ShortPixelType ,  3 >      ShortImageType;
   typedef itk::Image< FloatPixelType ,  3 >      InternalImageType;
   typedef itk::Image< OutputPixelType , 3 >      OutputImageType;
+    typedef itk::Image< OutputPixelType , 2 >      OutputImageType2D;
   typedef itk::Image< ShortPixelType ,  2 >      ShortImageType2D;
 
   typedef itk::ImageSeriesReader< ShortImageType > ReaderType;
+    typedef itk::ImageSeriesReader< ShortImageType2D > ReaderType2;
   typedef itk::TileImageFilter<ShortImageType2D, ShortImageType> TileImageFilter;
   typedef itk::CastImageFilter<ShortImageType,ShortImageType2D>  ImageTypecast;
   typedef itk::JoinSeriesImageFilter<ShortImageType2D, ShortImageType> JoinSeriesImageFilterType;
