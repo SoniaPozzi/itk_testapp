@@ -83,7 +83,7 @@ class FileDicomChoose
   typedef itk::Image< ShortPixelType ,  3 >      ShortImageType;
   typedef itk::Image< FloatPixelType ,  3 >      InternalImageType;
   typedef itk::Image< OutputPixelType , 3 >      OutputImageType;
-  typedef itk::Image< OutputPixelType , 2 >      OutputImageType2D;
+  typedef itk::Image< OutputPixelType , 2 >      OutputImageType2D;   
   typedef itk::Image< ShortPixelType ,  2 >      ShortImageType2D;
 
   typedef itk::ImageSeriesReader< ShortImageType > ReaderType;
