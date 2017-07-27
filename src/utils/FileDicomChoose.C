@@ -23,10 +23,38 @@
 #include "itkNeighborhoodConnectedImageFilter.h"
 #include "itkConfidenceConnectedImageFilter.h"
 #include <itkFileTools.h>
+#include "itkMeanImageFilter.h"
+#include "itkAbsoluteValueDifferenceImageFilter.h"
+#include "itkAddImageFilter.h"
+
 #include "itkSiemensVisionImageIOFactory.h"
  #include "itkMetaDataDictionary.h"
  #include "itkMetaDataObject.h"
   #include "itkExtractImageFilter.h"
+
+#include "itkBinaryThresholdImageFilter.h"
+
+#include "itkMetaDataDictionary.h"
+
+#include "itkNaryElevateImageFilter.h"
+#include "itkUnaryRetractImageFilter.h"
+
+#include "itkStreamingImageFilter.h"
+
+#include "itkVotingBinaryIterativeHoleFillingImageFilter.h"
+
+#include "itkBSplineInterpolateImageFunction.h"
+#include "itkAffineTransform.h"
+ #include "itkBSplineResampleImageFunction.h"
+ #include "itkBSplineTransform.h"
+
+#include "itkImageFileReader.h"
+#include "itkImageFileWriter.h"
+#include "itkResampleImageFilter.h"
+#include "itkConstantBoundaryCondition.h"
+#include "itkWindowedSincInterpolateImageFunction.h"
+
+
 
 
 template <>
@@ -45,7 +73,7 @@ validParams<FileDicomChoose>()
 
 FileDicomChoose::FileDicomChoose(const InputParameters & params) : _status(0)
 {
-
+  
   itk::TIFFImageIOFactory::RegisterOneFactory();
   bool has_directory = params.isParamValid( "dicomDirectory" ),
        has_file_base = params.isParamValid( "file_base" );
@@ -79,89 +107,116 @@ if (_lower_upper_threshold_values[0]>_lower_upper_threshold_values[1])
 
 
     nameGenerator -> SetUseSeriesDetails( true );
-
-    nameGenerator->AddSeriesRestriction("0008|0021" );
+    nameGenerator -> AddSeriesRestriction("0008|0021" );
     nameGenerator -> SetDirectory( _dicomDirectory );
+
 
     typedef std::vector< std::string >    SeriesIdContainer;
     const SeriesIdContainer & seriesUID = nameGenerator->GetSeriesUIDs();
     SeriesIdContainer::const_iterator seriesItr = seriesUID.begin();
     SeriesIdContainer::const_iterator seriesEnd = seriesUID.end();
 
-  // if  ( 1 ){ //if conosco il nome del file
-  //     bool ret_value = false;
+  if  ( 1 ){ //if conosco il nome del file
+      bool ret_value = false;
 
-  //     while( seriesItr != seriesEnd && ret_value==false )
-  //     {
-  //       const ReaderType::FileNamesContainer & filenames = nameGenerator->GetFileNames( seriesItr -> c_str() );
-  //       unsigned int numberOfFilenames =  filenames.size();
+      while( seriesItr != seriesEnd && ret_value==false )
+      {
+        const ReaderType::FileNamesContainer & filenames = nameGenerator->GetFileNames( seriesItr -> c_str() );
+        unsigned int numberOfFilenames =  filenames.size();
         
-  //       for(unsigned int fni = 0; fni<numberOfFilenames; fni++)
-  //       {
-  //         std::string seriesName=filenames[fni];
-  //         if (seriesName.find(_file_base) != std::string::npos) 
-  //         {
+        for(unsigned int fni = 0; fni<numberOfFilenames; fni++)
+        {
+          std::string seriesName=filenames[fni];
+          if (seriesName.find(_file_base) != std::string::npos) 
+          {
 
-  //           std::cout << "The directory: " << _dicomDirectory << std::endl;  
-  //           std::cout << "contains the DICOM Series related to '" <<  _file_base << "'!" << std::endl;
-  //           std::cout << "'The DICOM Series is: " << seriesItr -> c_str() << std::endl;
-  //           std::cout <<  "There are "<< numberOfFilenames << " files in Serie: " << std::endl;
+            std::cout << "The directory: " << _dicomDirectory << std::endl;  
+            std::cout << "contains the DICOM Series related to '" <<  _file_base << "'!" << std::endl;
+            std::cout << "'The DICOM Series is: " << seriesItr -> c_str() << std::endl;
+            std::cout <<  "There are "<< numberOfFilenames << " files in Serie: " << std::endl;
         
-  //           reader -> SetFileNames(filenames);
+            reader -> SetFileNames(filenames);
+          
+          typedef itk::GDCMImageIO ImageIOType;
+          ImageIOType::Pointer dicomIO = ImageIOType::New(); reader->SetImageIO( dicomIO );
+           reader->Update();
 
 
-  //           finalSeriesIdentifier = seriesItr -> c_str();
-  //           ret_value = true;
+            typedef itk::MetaDataDictionary DictionaryType;
+            const DictionaryType & dictionary = dicomIO->GetMetaDataDictionary();
+            typedef itk::MetaDataObject< std::string > MetaDataStringType;
+            DictionaryType::ConstIterator itr = dictionary.Begin(); 
+            DictionaryType::ConstIterator end = dictionary.End();
+
+
+            finalSeriesIdentifier = seriesItr -> c_str();
+            ret_value = true;
       
-  //           for(unsigned int fni = 0; fni<numberOfFilenames; fni++)
-  //          {
+            for(unsigned int fni = 0; fni<numberOfFilenames; fni++)
+           {
 
-  //           std::string seriesName = filenames[fni];
-  //           std::cout << "          # " << fni << " Filename = " << seriesName << std::endl;
+            std::string seriesName = filenames[fni];
+            std::cout << "          # " << fni << " Filename = " << seriesName << std::endl;
             
-  //           }
+            //print tag info
+            while( itr != end ){
+            itk::MetaDataObjectBase::Pointer entry = itr->second; MetaDataStringType::Pointer entryvalue =
+            dynamic_cast<MetaDataStringType *>( entry.GetPointer() );
+            if( entryvalue ) {
+            std::string tagkey = itr->first;
+            std::string tagvalue = entryvalue->GetMetaDataObjectValue(); std::cout << tagkey << " = " << tagvalue << std::endl;
+            }
+            ++itr; }
+
+
+            }
     
-  //           break;
+            break;
 
-  //         }
-  //       }
+          }
+        }
 
-  //       ++seriesItr;
-  //     }
+        ++seriesItr;
+      }
    
 
 
-  //     /// In case the related series is not found, elencate the series available and give an error
+      /// In case the related series is not found, elencate the series available and give an error
 
-  //     if(!ret_value)
-  //     {  
-  //       seriesItr = seriesUID.begin();
-  //       mooseWarning("");
-  //       std::cout << "The directory: " << _dicomDirectory << std::endl;  
-  //       std::cout << "does not contain the DICOM Series related to '"<< _file_base<<"'! It has the following: "<<std::endl;
+      if(!ret_value)
+      {  
+
+
+
+        seriesItr = seriesUID.begin();
+        mooseWarning("");
+        std::cout << "The directory: " << _dicomDirectory << std::endl;  
+        std::cout << "does not contain the DICOM Series related to '"<< _file_base<<"'! It has the following: "<<std::endl;
         
-  //       while( seriesItr != seriesEnd )
-  //      {     
+        while( seriesItr != seriesEnd )
+       {     
 
-  //         const ReaderType::FileNamesContainer & filenames = nameGenerator->GetFileNames(seriesItr->c_str());
-  //         unsigned int numberOfFilenames =  filenames.size();
-  //         std::cout <<std::endl;
-  //         std::cout <<  "DICOM Series: " << seriesItr->c_str() <<";   Files in Serie   " << numberOfFilenames << std::endl;
+          const ReaderType::FileNamesContainer & filenames = nameGenerator->GetFileNames(seriesItr->c_str());
+          unsigned int numberOfFilenames =  filenames.size();
+          std::cout <<std::endl;
+          std::cout <<  "DICOM Series: " << seriesItr->c_str() <<";   Files in Serie   " << numberOfFilenames << std::endl;
                       
-  //         for(unsigned int fni = 0; fni<numberOfFilenames; fni++)
-  //           { 
-  //             std::string seriesName=filenames[fni];
-  //             std::cout << "          # " << fni << " Filename = " << seriesName << std::endl; 
-  //           }   
+          for(unsigned int fni = 0; fni<numberOfFilenames; fni++)
+            { 
+              std::string seriesName=filenames[fni];
+              std::cout << "          # " << fni << " Filename = " << seriesName << std::endl; 
+            }   
 
-  //           ++seriesItr;
 
-  //           }
 
-  //         mooseError("Set file_base to a filename in the DICOM series to use.");
-  //       }
-  //      }
-  //  else{   //non conosco il nome del file
+            ++seriesItr;
+
+            }
+
+          mooseError("Set file_base to a filename in the DICOM series to use.");
+        }
+       }
+  else{   //non conosco il nome del file
 
 
   int slice=0;
@@ -220,15 +275,15 @@ typedef itk::NumericSeriesFileNames    NameGeneratorType;
     {  
 
       reader_types.push_back(ReaderType::New());
-      reader -> SetImageIO( dicomIO );
-      reader-> SetFileName( names[fni]);
-      reader-> UpdateLargestPossibleRegion();
-      reader-> UpdateOutputInformation();
-      reader-> Update();
+      reader_types[fni] -> SetImageIO( dicomIO );
+      reader_types[fni]-> SetFileName( names[fni]);
+      reader_types[fni]-> UpdateLargestPossibleRegion();
+      //reader_types[fni]-> UpdateOutputInformation();
+      reader_types[fni]-> Update();
 
-      region_types[fni] = reader->GetOutput()->GetLargestPossibleRegion();
+      region_types[fni] = reader_types[fni]->GetOutput()->GetLargestPossibleRegion();
 
-      std::cout<<"Dicom size"<<reader->GetOutput()->GetLargestPossibleRegion()<<std::endl;
+      std::cout<<"Dicom size"<<reader_types[fni]->GetOutput()->GetLargestPossibleRegion()<<std::endl;
       extract_types.push_back(FilterType::New());
 
       extract_types[fni]->InPlaceOn();
@@ -243,7 +298,7 @@ typedef itk::NumericSeriesFileNames    NameGeneratorType;
       desiredRegion_types[fni].SetSize( size_types[fni] ); 
       desiredRegion_types[fni].SetIndex( start_types[fni] );
 
-      extract_types[fni]->SetInput(   reader->GetOutput());
+      extract_types[fni]->SetInput(   reader_types[fni]->GetOutput());
       extract_types[fni]->SetExtractionRegion( desiredRegion_types[fni] );
       extract_types[fni]->Update();
 
@@ -255,8 +310,11 @@ typedef itk::NumericSeriesFileNames    NameGeneratorType;
 
       std::cout<<"Slice Dicom size" <<inputImageTile_types[fni]->GetLargestPossibleRegion()<<std::endl;
 
-      joinFilter->SetInput(inputImageNumber++,inputImageTile_types[fni]);
+        inputImageNumber++;
+
+      joinFilter->SetInput(inputImageNumber,inputImageTile_types[fni]);
       
+      //joinFilter->Update();
 
     }
        joinFilter->Update();
@@ -265,28 +323,27 @@ typedef itk::NumericSeriesFileNames    NameGeneratorType;
      
       newDicom= joinFilter -> GetOutput();
 
-
+}
 
  
       std::cout  << "---------------------------------------------" << std::endl<<std::endl;
       std::cout << " Reading the DICOM Series of interest  " << std::endl << std::endl;
-      std::cout << "   DICOM Serie Dimension:    " << newDicom -> GetLargestPossibleRegion().GetSize() << std::endl;
-      std::cout << "   DICOM Serie Spacing:      " << newDicom -> GetSpacing() << std::endl;
-      std::cout << "   DICOM Serie Origin:       " << newDicom -> GetOrigin() << std::endl << std::endl;
+      std::cout << "   DICOM Serie Dimension:    " << reader->GetOutput() -> GetLargestPossibleRegion().GetSize() << std::endl;
+      std::cout << "   DICOM Serie Spacing:      " << reader->GetOutput() -> GetSpacing() << std::endl;
+      std::cout << "   DICOM Serie Origin:       " << reader->GetOutput() -> GetOrigin() << std::endl << std::endl;
  
       /// Cast filter to convert from short data type to float data type
       typedef itk::CastImageFilter< ShortImageType, InternalImageType > CastFilterType;
       typedef itk::RescaleIntensityImageFilter<   InternalImageType, InternalImageType > RescaleFilterType;
       CastFilterType::Pointer castFilter = CastFilterType::New();
       RescaleFilterType::Pointer rescaler = RescaleFilterType::New();
-      InternalImageType::Pointer scaledImage = InternalImageType::New();
       
 
 
 
       /// Castering from short to float data typpe requires rescale
 
-      castFilter -> SetInput( newDicom );
+      castFilter -> SetInput( reader->GetOutput() );
 
 
       rescaler -> SetOutputMinimum(   0 );
@@ -300,7 +357,7 @@ typedef itk::NumericSeriesFileNames    NameGeneratorType;
       
 
       typedef itk::CastImageFilter< InternalImageType, OutputImageType > CastFilterOutType;
-      typedef itk::ImageFileWriter< OutputImageType >  WriterType;
+      typedef itk::ImageFileWriter< OutputImageType >  WriterType; ///qui
       CastFilterOutType::Pointer casterOut = CastFilterOutType::New();
       CastFilterOutType::Pointer caster = CastFilterOutType::New();
        
@@ -309,9 +366,10 @@ typedef itk::NumericSeriesFileNames    NameGeneratorType;
       caster -> SetInput(scaledImage);
       caster -> Update();
 
+
      itk::FileTools::CreateDirectory("Output");
      
-    // const ReaderType::FileNamesContainer & names = nameGenerator -> GetFileNames( finalSeriesIdentifier );
+     const ReaderType::FileNamesContainer & names = nameGenerator -> GetFileNames( finalSeriesIdentifier );
       unsigned int finalNumberOfFilenames =  names.size();
      
      
@@ -322,14 +380,12 @@ typedef itk::NumericSeriesFileNames    NameGeneratorType;
        fnames->SetIncrementIndex( 1 );
        fnames->SetSeriesFormat( format.c_str() );
 
-       std::cout<<"sono quoooo"<<std::endl;
-
       typedef itk::Image< OutputPixelType, 2 > OutputImageType2d;
       typedef itk::ImageSeriesWriter< OutputImageType, OutputImageType2d >    WriterType2d;
       WriterType2d::Pointer outputWriter = WriterType2d::New();
       outputWriter->SetInput( caster -> GetOutput() );
       outputWriter->SetFileNames( fnames->GetFileNames() );
-std::cout<<"sono quiiiiii"<<std::endl;
+
 
       try
       {
@@ -339,159 +395,260 @@ std::cout<<"sono quiiiiii"<<std::endl;
       {
         mooseError("Exception in file writer");
       }
-std::cout<<"sono qui"<<std::endl;
-
- //      std::cout << " Open  Output/" << _file_base << "-rescaled-#.tiff to see the images in rescaled gray scale" << std::endl << std::endl;
-
- //      std::cout  << "---------------------------------------------" << std::endl<<std::endl;
- //      std::cout  << "Applying ITK filters  " << std::endl<<std::endl;
- //      std::cout  << " Applying connectedThreshold ITK filter:  " << std::endl;
-
- //      typedef itk::CurvatureFlowImageFilter< InternalImageType, InternalImageType > CurvatureFlowImageFilterType;
- //      typedef itk::ConnectedThresholdImageFilter< InternalImageType, InternalImageType > ConnectedFilterType;
- //      typedef itk::NeighborhoodConnectedImageFilter<InternalImageType, InternalImageType > NeighborhoodConnectedFilterType;
-
- //      typedef itk::ConfidenceConnectedImageFilter<InternalImageType, InternalImageType > ConfidenceonnectedFilterType;
-
- //      CurvatureFlowImageFilterType::Pointer smoothing = CurvatureFlowImageFilterType::New();
- //      ConnectedFilterType::Pointer connectedThreshold = ConnectedFilterType::New();
- //       NeighborhoodConnectedFilterType::Pointer neighborhoodConnectedThreshold = NeighborhoodConnectedFilterType::New();
- //    ConfidenceonnectedFilterType::Pointer confidenceConnectedThreshold = ConfidenceonnectedFilterType::New();
-
-   
-
- //      smoothing -> SetNumberOfIterations( _filtering_params[0] ); 
- //      smoothing -> SetTimeStep( _filtering_params[1]  );
- //      smoothing -> SetInput( scaledImage );
-
- //      connectedThreshold -> SetInput( smoothing -> GetOutput() ); 
- //      connectedThreshold -> SetLower( _lower_upper_threshold_values[0] ); 
- //      connectedThreshold -> SetUpper( _lower_upper_threshold_values[1] );
- //      connectedThreshold -> SetReplaceValue( 255 ); //Considered threshold set to 255 (white)
- //      connectedThreshold -> SetInput( scaledImage ); 
 
 
+      std::cout << " Open  Output/" << _file_base << "-rescaled-#.tiff to see the images in rescaled gray scale" << std::endl << std::endl;
 
-      
+       std::cout  << "---------------------------------------------" << std::endl<<std::endl;
+       std::cout  << "Applying ITK filters  " << std::endl<<std::endl;
+       std::cout  << " Applying connectedThreshold ITK filter:  " << std::endl;
 
- //      if ( _seed_index.size() < 1)
- //      {
+       typedef itk::CurvatureFlowImageFilter< InternalImageType, InternalImageType > CurvatureFlowImageFilterType;
+       typedef itk::ConnectedThresholdImageFilter< InternalImageType, InternalImageType > ConnectedFilterType;
+       typedef itk::NeighborhoodConnectedImageFilter<InternalImageType, InternalImageType > NeighborhoodConnectedFilterType;
 
- //       mooseError("Add at least a seed index for ConnectedFilterType.");
+       typedef itk::ConfidenceConnectedImageFilter<InternalImageType, InternalImageType > ConfidenceonnectedFilterType;
 
- //      }
-
- //      InternalImageType::IndexType  seedIndex;
-
- //      seedIndex[0]=_seed_index[0];
- //      seedIndex[1]=_seed_index[1];
- //      seedIndex[2]=_seed_index[2];
-
- //      connectedThreshold -> SetSeed( seedIndex );
+       CurvatureFlowImageFilterType::Pointer smoothing = CurvatureFlowImageFilterType::New();
+       ConnectedFilterType::Pointer connectedThreshold = ConnectedFilterType::New();
+       NeighborhoodConnectedFilterType::Pointer neighborhoodConnectedThreshold = NeighborhoodConnectedFilterType::New();
+     ConfidenceonnectedFilterType::Pointer confidenceConnectedThreshold = ConfidenceonnectedFilterType::New();
   
 
- //      InternalImageType::PixelType pixel_value;
- //      pixel_value= scaledImage->GetPixel( seedIndex ); 
+       smoothing -> SetNumberOfIterations( _filtering_params[0] ); 
+       smoothing -> SetTimeStep( _filtering_params[1]  );
+       smoothing -> SetInput( scaledImage );
 
- //      std::cout   << "  selected Seed index:  " << seedIndex <<  " with Pixel Value: " << pixel_value << std::endl;
+       connectedThreshold -> SetInput( smoothing -> GetOutput() ); 
+      connectedThreshold -> SetLower( _lower_upper_threshold_values[0] ); 
+       connectedThreshold -> SetUpper( _lower_upper_threshold_values[1] );
+       connectedThreshold -> SetReplaceValue( 255 ); //Considered threshold set to 255 (white)
+       connectedThreshold -> SetInput( scaledImage ); 
+
+      if ( _seed_index.size() < 1)
+       {
+
+       mooseError("Add at least a seed index for ConnectedFilterType.");
+
+       }
+
+       InternalImageType::IndexType  seedIndex;
+
+       seedIndex[0]=_seed_index[0];
+       seedIndex[1]=_seed_index[1];
+       seedIndex[2]=_seed_index[2];
+
+      connectedThreshold -> SetSeed( seedIndex );
+  
+
+      InternalImageType::PixelType pixel_value;
+      pixel_value= scaledImage->GetPixel( seedIndex ); 
+
+      std::cout   << "  selected Seed index:  " << seedIndex <<  " with Pixel Value: " << pixel_value << std::endl;
 
 
- //      if( _seed_index.size() % 3 != 0)
- //      {
+      if( _seed_index.size() % 3 != 0)
+      {
        
- //       mooseError("A pixel index is missing or redundant in seed_index");
+       mooseError("A pixel index is missing or redundant in seed_index");
 
- //      }
- //      else{
+      }
+      else{
 
- //      int numberOfSeeds = _seed_index.size()/3;
+      int numberOfSeeds = _seed_index.size()/3;
 
  
- //      InternalImageType::IndexType  addSeedIndex;
+      InternalImageType::IndexType  addSeedIndex;
 
- //      for (unsigned i(1); i < numberOfSeeds; ++i)
- //     {
+      for (unsigned i(1); i < numberOfSeeds; ++i)
+     {
       
- //      addSeedIndex[0]=_seed_index[3*i];
- //      addSeedIndex[1]=_seed_index[3*i+1];
- //      addSeedIndex[2]=_seed_index[3*i+2];
+      addSeedIndex[0]=_seed_index[3*i];
+      addSeedIndex[1]=_seed_index[3*i+1];
+      addSeedIndex[2]=_seed_index[3*i+2];
 
- //      connectedThreshold -> AddSeed( addSeedIndex );
+      connectedThreshold -> AddSeed( addSeedIndex );
 
 
- //      pixel_value= scaledImage->GetPixel( addSeedIndex ); 
+      pixel_value= scaledImage->GetPixel( addSeedIndex ); 
 
- //      std::cout   << "  selected Additional Seed index:  " << addSeedIndex <<  " with Pixel Value: " << pixel_value << std::endl;
+      std::cout   << "  selected Additional Seed index:  " << addSeedIndex <<  " with Pixel Value: " << pixel_value << std::endl;
 
- //     }
- //      }
+     }
+      }
 
- //      std::cout<<std::endl;
+      std::cout<<std::endl;
       
- //      connectedThreshold -> Update();
+      connectedThreshold -> Update();
 
- //      /// Cast filter to convert from float to unsigned char
+      /// Cast filter to convert from float to unsigned char
 
- //      casterOut -> SetInput( connectedThreshold -> GetOutput() );
- //      casterOut -> UpdateLargestPossibleRegion(); 
- //      casterOut -> Update();
-
-
- //      std::cout  <<" Cropping of the Region of Interest (ITK filter):  " << std::endl;
-
- //      typedef itk::ImageMaskSpatialObject< 3 >        ImageMaskSpatialObjectType;
- //      typedef ImageMaskSpatialObjectType::ImageType   OutputImageType;
- //      typedef itk::RegionOfInterestImageFilter< OutputImageType, OutputImageType > FilterType;
-
- //      ImageMaskSpatialObjectType::Pointer       ImageMaskSpatialObject  = ImageMaskSpatialObjectType::New();
- //      ImageMaskSpatialObject->SetImage ( casterOut -> GetOutput() );
- //      OutputImageType::RegionType boundingBoxRegion = ImageMaskSpatialObject -> GetAxisAlignedBoundingBoxRegion();     
- //      std::cout   << "  Bounding Box Region Informations: " << boundingBoxRegion << std::endl;
-
- //      FilterType::Pointer filterRegion = FilterType::New();
- //      filterRegion -> SetRegionOfInterest( boundingBoxRegion );
- //      filterRegion -> SetInput( casterOut -> GetOutput() );
- //      filterRegion -> Update();
-
- //      filteredImage = filterRegion -> GetOutput();
-
- //      outputImageSize = filteredImage -> GetLargestPossibleRegion().GetSize(); 
- //      outputImageSpacing = filteredImage -> GetSpacing();
+      casterOut -> SetInput( connectedThreshold -> GetOutput() );
+      casterOut -> UpdateLargestPossibleRegion(); 
+      casterOut -> Update();
 
 
+      std::cout  <<" Cropping of the Region of Interest (ITK filter):  " << std::endl;
 
- //       std::cout  << " Applying FillholeFilterType ITK filter  " << std::endl<<std::endl;
+      typedef itk::ImageMaskSpatialObject< 3 >        ImageMaskSpatialObjectType;
+      typedef ImageMaskSpatialObjectType::ImageType   OutputImageType;
+      typedef itk::RegionOfInterestImageFilter< OutputImageType, OutputImageType > FilterType;
 
- //      typedef itk::GrayscaleFillholeImageFilter<OutputImageType,OutputImageType>  FillholeFilterType;
- //      FillholeFilterType::Pointer  fillholes = FillholeFilterType::New();
+      ImageMaskSpatialObjectType::Pointer       ImageMaskSpatialObject  = ImageMaskSpatialObjectType::New();
+      ImageMaskSpatialObject->SetImage ( casterOut -> GetOutput() );
+      OutputImageType::RegionType boundingBoxRegion = ImageMaskSpatialObject -> GetAxisAlignedBoundingBoxRegion();     
+      std::cout   << "  Bounding Box Region Informations: " << boundingBoxRegion << std::endl;
 
- //      fillholes -> SetInput( filteredImage );
- //      fillholes -> Update();
+      FilterType::Pointer filterRegion = FilterType::New();
+      filterRegion -> SetRegionOfInterest( boundingBoxRegion );
+      filterRegion -> SetInput( casterOut -> GetOutput() );
+      filterRegion -> Update();
+
+      filteredImage = filterRegion -> GetOutput();
+
+      outputImageSize = filteredImage -> GetLargestPossibleRegion().GetSize(); 
+      outputImageSpacing = filteredImage -> GetSpacing();
+
+
+
+       std::cout  << " Applying FillholeFilterType ITK filter  " << std::endl<<std::endl;
+
+      typedef itk::GrayscaleFillholeImageFilter<OutputImageType,OutputImageType>  FillholeFilterType;
+      FillholeFilterType::Pointer  fillholes = FillholeFilterType::New();
+
+      fillholes -> SetInput( filteredImage );
+      fillholes -> Update();
     
- //      std::cout << " Information about the filtered and cropped DICOM Series  " << std::endl << std::endl;
- //      std::cout << "  DICOM Serie Dimension:    " << filteredImage -> GetLargestPossibleRegion().GetSize() << std::endl;
- //      std::cout << "  DICOM Serie Spacing:      " << filteredImage -> GetSpacing() << std::endl;
- //      std::cout << "  DICOM Serie Origin:       " << filteredImage -> GetOrigin() << std::endl << std::endl; 
+      std::cout << " Information about the filtered and cropped DICOM Series  " << std::endl << std::endl;
+      std::cout << "  DICOM Serie Dimension:    " << filteredImage -> GetLargestPossibleRegion().GetSize() << std::endl;
+      std::cout << "  DICOM Serie Spacing:      " << filteredImage -> GetSpacing() << std::endl;
+      std::cout << "  DICOM Serie Origin:       " << filteredImage -> GetOrigin() << std::endl << std::endl; 
+
+
+typedef itk::ResampleImageFilter<  OutputImageType, OutputImageType >  ResampleFilterType;
+  ResampleFilterType::Pointer filter = ResampleFilterType::New();
+  typedef itk::IdentityTransform<double, 3>  TransformType;
+  TransformType::Pointer   transform  = TransformType::New();
+   
+   transform->SetIdentity();
+   interpolator->SetSplineOrder(5);
   
- //      /// Visualize the results of the filtering and cropping writing a tiff image
-      
- //      WriterType::Pointer writer = WriterType::New();
- //      writer -> SetInput( filteredImage ); //_file_base
- //      std::string name = std::string( "Output/" ) + std::string( _file_base ) + std::string( "-filtered-and-cropped.tiff" );
- //      writer -> SetFileName( name );
-      
- //      try
- //      {
- //        writer -> Update();
- //      }
- //     catch (itk::ExceptionObject & e)
- //      {
- //        mooseError("Exception in file writer");
- //      }
+  filter->SetTransform( transform );
+  filter->SetInterpolator( interpolator );
+  //filter->SetDefaultPixelValue( 100 );
+
+  const OutputImageType::SpacingType&     spacing = filteredImage->GetSpacing();
+  const OutputImageType::PointType&     origin  = filteredImage->GetOrigin();
+  const OutputImageType::DirectionType&     direction  = filteredImage->GetDirection();
+  
+  filter->SetOutputOrigin( origin );
+  filter->SetOutputSpacing( spacing );
+  filter->SetOutputDirection( direction );
+
+  filter->SetSize( filteredImage->GetLargestPossibleRegion().GetSize());
+  filter->SetInput( filteredImage );
+  filter->UpdateLargestPossibleRegion();
+  filter->Update();
+
+   typedef itk::RescaleIntensityImageFilter< OutputImageType, OutputImageType >   RescalerOutType;
+  //   RescalerOutType::Pointer rescalerOut = RescalerOutType::New();
+  // rescalerOut->SetOutputMinimum(  0  );
+  // rescalerOut->SetOutputMaximum( 200 );
+  // rescalerOut->SetInput( filter->GetOutput() );
+
+//// fino qui
+
+  typedef itk::BinaryThresholdImageFilter<  OutputImageType, OutputImageType > BinaryType;
+
+  BinaryType::Pointer binaryThreshold = BinaryType::New();
+
+  binaryThreshold->SetInput(  filter->GetOutput()  );
+  binaryThreshold->SetOutsideValue( 0 );
+  binaryThreshold->SetInsideValue(  255  );
+  binaryThreshold->SetLowerThreshold( 1 );
+  binaryThreshold->SetUpperThreshold( 255 );
+  binaryThreshold->Update();
+
+// //      / Visualize the results of the filtering and cropping writing a tiff image
+
+    OutputImageType::SizeType radius;
+    radius[0] = 2; // radius along x
+    radius[1] = 2; // radius along y
+    radius[2] = 0; // radius along y 
+
+    typedef itk::VotingBinaryIterativeHoleFillingImageFilter< OutputImageType > VotingType;
+
+    VotingType::Pointer voting = VotingType::New();
+    voting->SetInput( binaryThreshold->GetOutput() );
+    voting->SetRadius( radius );
+    voting->SetMajorityThreshold( 2 );
+    voting->SetBackgroundValue( 0 );
+    voting->SetForegroundValue( 255);
+    voting->SetMaximumNumberOfIterations( 120 );
+    voting->Update();
+
+ //const unsigned int iterationsUsed = filter->GetCurrentNumberOfIterations();
+  std::cout << "The filter used " << voting->GetCurrentNumberOfIterations() << " iterations " << std::endl;
+ // const unsigned int numberOfPixelsChanged = filter->GetNumberOfPixelsChanged();
+  std::cout << "and changed a total of " << voting->GetNumberOfPixelsChanged() << " pixels" << std::endl;
+
+
+  RescalerOutType::Pointer rescalerOut5 = RescalerOutType::New();
+  rescalerOut5->SetOutputMinimum( 0 );
+  rescalerOut5->SetOutputMaximum( 100 );
+  rescalerOut5->SetInput( voting->GetOutput() );
+
+
+  typedef itk::AddImageFilter<OutputImageType,  OutputImageType,  OutputImageType > AddFilterType;
+  AddFilterType::Pointer addFilter = AddFilterType::New();
+  addFilter->SetInput1( rescalerOut5->GetOutput() );
+  addFilter->SetInput2( filter->GetOutput() );
+  addFilter->Update();
+
     
- //     std::cout << " Open  Output/" << _file_base <<"-filtered-and-cropped.tiff to see the filtered and cropped DICOM Series" << std::endl << std::endl;
- //      std::cout  <<"---------------------------------------------" << std::endl;
- //      std::cout << "---------------------------------------------" << std::endl;
+    RescalerOutType::Pointer rescalerOut4 = RescalerOutType::New();
+  rescalerOut4->SetOutputMinimum(  0 );
+  rescalerOut4->SetOutputMaximum( 255 );
+  rescalerOut4->SetInput( addFilter->GetOutput() );
+
+
+    typedef itk::MeanImageFilter<  OutputImageType, OutputImageType >  MeanType;
+
+
+  MeanType::Pointer mean = MeanType::New();
+
+  OutputImageType::SizeType indexRadius;
+  indexRadius[0] = 2; // radius along x
+  indexRadius[1] = 2; // radius along y
+    indexRadius[2] = 0; // radius along y
+     mean->SetInput( rescalerOut4->GetOutput()  );
+  mean->SetRadius( indexRadius );
+
+
+      smoothedImage=mean->GetOutput();
+ 
+
+      WriterType::Pointer writer = WriterType::New();
+      writer -> SetInput( smoothedImage  ); //_file_base
+      std::string name = std::string( "Output/" ) + std::string( _file_base ) + std::string( "-filtered-and-cropped.tiff" );
+      writer -> SetFileName( name );
+      
+      try
+      {
+        writer -> Update();
+      }
+     catch (itk::ExceptionObject & e)
+      {
+        mooseError("Exception in file writer");
+      }
+    
+     std::cout << " Open  Output/" << _file_base <<"-filtered-and-cropped.tiff to see the filtered and cropped DICOM Series" << std::endl << std::endl;
+      std::cout  <<"---------------------------------------------" << std::endl;
+      std::cout << "---------------------------------------------" << std::endl;
+
+
+
+
   }
   
     catch (itk::ExceptionObject &ex)

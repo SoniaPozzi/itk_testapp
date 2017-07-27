@@ -16,6 +16,8 @@
 #include "ImageSamplerItk.h"
 #include "MooseApp.h"
 #include "ImageMeshItk.h"
+#include "itkImage.h"
+
 
 template <>
 InputParameters
@@ -123,31 +125,50 @@ ImageSamplerItk::setupImageSampler(MooseMesh & mesh)
 Real
 ImageSamplerItk::sample(const Point & p)
 {
-    if (!_bounding_box.contains_point(p))
-    return 0.0;
+      if (!_bounding_box.contains_point(p))
+      return 0.0;
 
-    std::vector<int> x(3, 0);
-    for (int i = 0; i < LIBMESH_DIM; ++i)
-    {
-      if (_voxel[i] == 0)
-      { x[i] = 0;   }
-      else
+
+      std::cout<<"============"<<std::endl;
+      typedef itk::Point< double, 3 > PointType;
+
+    //  OutputImageType::IndexType pixel;
+     itk::ContinuousIndex<double, 3> pixel;
+      OutputPixelType pixelValue;
+
+      std::vector<double> x(3, 0);
+      for (int i = 0; i < LIBMESH_DIM; ++i)
       {
-        x[i] = std::floor((p(i) - _origin(i)) /(  _voxel[i] ));
-        // If the point falls on the mesh extents the index needs to be decreased by one
-        if (x[i] == outputImageSize[i])
-        x[i]--;
-       }
-    }
+          if (_voxel[i] == 0)
+          { pixel[i] = 0;   }
+          else
+          {
+          x[i] = ((p(i) - _origin(i))/(  _voxel[i] ));
+          if (x[i] == outputImageSize[i])
+          x[i]--;
 
-    OutputImageType::IndexType pixelIndex;
-    OutputPixelType pixelValue;
+          }
+      }
 
-    pixelIndex[0]=x[0];
-    pixelIndex[1]=x[1];
-    pixelIndex[2]=x[2];
+      pixel[0]=x[0];
+      pixel[1]=x[1];
+      pixel[2]=x[2];
 
-    pixelValue = filteredImage -> GetPixel(pixelIndex);
+
+      itk::LinearInterpolateImageFunction<OutputImageType, double>::Pointer linearInterpolator =
+      itk::LinearInterpolateImageFunction<OutputImageType, double>::New();
+      linearInterpolator->SetInputImage(smoothedImage);
+
+      //std::cout << "Value at 1.3: " << linearInterpolator->EvaluateAtContinuousIndex(pixel) << std::endl;
+
+      pixelValue=  linearInterpolator->EvaluateAtContinuousIndex(pixel) ;
+
+    //pixelValue=  smoothedImage->GetPixel(pixel) ;
+
+      std::cout << pixel<<"Value at: " << static_cast<unsigned> (pixelValue) << std::endl;
+
+
+
 
     return pixelValue;
 

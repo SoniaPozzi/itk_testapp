@@ -25,6 +25,14 @@
 #include <itkCastImageFilter.h>
 #include "DICOMAppHelper.h"
 
+#include "itkLinearInterpolateImageFunction.h"
+
+
+
+#include "itkBSplineInterpolateImageFunction.h"
+#include "itkAffineTransform.h"
+ #include "itkBSplineResampleImageFunction.h"
+
 // Forward declarations
 class FileDicomChoose;
 class InputParameters;
@@ -99,10 +107,19 @@ class FileDicomChoose
   NamesGeneratorType::Pointer nameGenerator = NamesGeneratorType::New();
   FileNamesContainer fileNames;
   std::string finalSeriesIdentifier;
+
+
+InternalImageType::Pointer scaledImage = InternalImageType::New();
+OutputImageType::Pointer smoothedImage = OutputImageType::New();
   
-  OutputImageType::Pointer filteredImage=OutputImageType::New();
+  
+  OutputImageType::Pointer filteredImage =OutputImageType::New();
   OutputImageType::SizeType outputImageSize;
   OutputImageType::SpacingType outputImageSpacing;
+
+
+ typedef itk::BSplineResampleImageFunction<OutputImageType,  double>    InterpolatorType;
+  InterpolatorType::Pointer   interpolator  = InterpolatorType::New();
 
 };
 
