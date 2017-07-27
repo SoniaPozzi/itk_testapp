@@ -40,13 +40,12 @@ void
 ImageFunctionItk::initialSetup()
 {
   FEProblemBase * fe_problem = this->getParam<FEProblemBase *>("_fe_problem_base");
-  MooseMesh & mesh = fe_problem->mesh();
+  MooseMesh & mesh = fe_problem -> mesh();
   setupImageSampler(mesh);
 }
 
 Real
 ImageFunctionItk::value(Real /*t*/, const Point & p)
 {
-
   return sample(p);
 }

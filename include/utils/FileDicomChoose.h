@@ -14,24 +14,17 @@
 #include <iostream>
 
 // itk includes
-#include "itkJoinSeriesImageFilter.h"
+
 #include "itkGDCMImageIO.h"
 #include "itkGDCMSeriesFileNames.h"
 #include "itkImageSeriesReader.h"
 #include "itkImageIOBase.h"
-#include "itkNumericSeriesFileNames.h"
+
+
 #include "itkDICOMSeriesFileNames.h"
-#include "itkTileImageFilter.h"
-#include <itkCastImageFilter.h>
-#include "DICOMAppHelper.h"
-
-#include "itkLinearInterpolateImageFunction.h"
-
-
-
-#include "itkBSplineInterpolateImageFunction.h"
-#include "itkAffineTransform.h"
- #include "itkBSplineResampleImageFunction.h"
+#include "itkCastImageFilter.h"
+#include "itkJoinSeriesImageFilter.h"
+#include "itkBSplineResampleImageFunction.h"
 
 // Forward declarations
 class FileDicomChoose;
@@ -90,16 +83,17 @@ class FileDicomChoose
   typedef itk::Image< ShortPixelType ,  3 >      ShortImageType;
   typedef itk::Image< FloatPixelType ,  3 >      InternalImageType;
   typedef itk::Image< OutputPixelType , 3 >      OutputImageType;
-    typedef itk::Image< OutputPixelType , 2 >      OutputImageType2D;
+  typedef itk::Image< OutputPixelType , 2 >      OutputImageType2D;
   typedef itk::Image< ShortPixelType ,  2 >      ShortImageType2D;
 
   typedef itk::ImageSeriesReader< ShortImageType > ReaderType;
-    typedef itk::ImageSeriesReader< ShortImageType2D > ReaderType2;
+  typedef itk::ImageSeriesReader< ShortImageType2D > ReaderType2;
   typedef itk::CastImageFilter<ShortImageType,ShortImageType2D>  ImageTypecast;
   typedef itk::JoinSeriesImageFilter<ShortImageType2D, ShortImageType> JoinSeriesImageFilterType;
   typedef itk::GDCMImageIO ImageIOType;
   typedef itk::GDCMSeriesFileNames NamesGeneratorType;
   typedef std::vector< std::string > FileNamesContainer;
+  typedef itk::BSplineResampleImageFunction<OutputImageType,  double>    InterpolatorType;
 
 
   ImageIOType::Pointer dicomIO = ImageIOType::New();
@@ -109,16 +103,10 @@ class FileDicomChoose
   std::string finalSeriesIdentifier;
 
 
-InternalImageType::Pointer scaledImage = InternalImageType::New();
-OutputImageType::Pointer smoothedImage = OutputImageType::New();
-  
-  
+  InternalImageType::Pointer scaledImage = InternalImageType::New();  
   OutputImageType::Pointer filteredImage =OutputImageType::New();
   OutputImageType::SizeType outputImageSize;
   OutputImageType::SpacingType outputImageSpacing;
-
-
- typedef itk::BSplineResampleImageFunction<OutputImageType,  double>    InterpolatorType;
   InterpolatorType::Pointer   interpolator  = InterpolatorType::New();
 
 };

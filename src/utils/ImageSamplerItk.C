@@ -18,6 +18,7 @@
 #include "ImageMeshItk.h"
 #include "itkImage.h"
 
+#include "itkLinearInterpolateImageFunction.h"
 
 template <>
 InputParameters
@@ -115,8 +116,6 @@ ImageSamplerItk::setupImageSampler(MooseMesh & mesh)
     filteredImage -> SetOrigin( newOrigin );
     filteredImage -> Update();
 
-    _is_console << "Filtered and Cropped DICOM Serie Origin moved to: " << filteredImage -> GetOrigin() << std::endl;
-
     _bounding_box.min() = _origin;
     _bounding_box.max() = _origin + _physical_dims;
     
@@ -125,50 +124,48 @@ ImageSamplerItk::setupImageSampler(MooseMesh & mesh)
 Real
 ImageSamplerItk::sample(const Point & p)
 {
-      if (!_bounding_box.contains_point(p))
+    if (!_bounding_box.contains_point(p))
       return 0.0;
+ 
+    OutputPixelType pixelValue;
+    itk::ContinuousIndex<double, 3> pixel;
 
+    //In case standard pixel use replace the previous line with:
+    //OutputImageType::IndexType pixel;
 
-      std::cout<<"============"<<std::endl;
-      typedef itk::Point< double, 3 > PointType;
-
-    //  OutputImageType::IndexType pixel;
-     itk::ContinuousIndex<double, 3> pixel;
-      OutputPixelType pixelValue;
-
-      std::vector<double> x(3, 0);
-      for (int i = 0; i < LIBMESH_DIM; ++i)
+    std::vector<double> x(3, 0);
+      
+    for (int i = 0; i < LIBMESH_DIM; ++i)
       {
           if (_voxel[i] == 0)
-          { pixel[i] = 0;   }
+          { 
+            pixel[i] = 0;   
+          }
           else
           {
-          x[i] = ((p(i) - _origin(i))/(  _voxel[i] ));
-          if (x[i] == outputImageSize[i])
-          x[i]--;
+            x[i] = (p(i) - _origin(i))/  _voxel[i] ;
+
+            // in case standard pixel use replace the previous line with:
+            //x[i] = std::floor((p(i) - _origin(i))/(  _voxel[i] ));
+            
+            if (x[i] == outputImageSize[i])
+            
+            x[i]--;
 
           }
       }
 
-      pixel[0]=x[0];
-      pixel[1]=x[1];
-      pixel[2]=x[2];
+      pixel[0] = x[0];
+      pixel[1] = x[1];
+      pixel[2] = x[2];
 
+      itk::LinearInterpolateImageFunction<OutputImageType, double>::Pointer linearInterpolator = itk::LinearInterpolateImageFunction<OutputImageType, double>::New();
+      linearInterpolator -> SetInputImage( filteredImage );
+      pixelValue =  linearInterpolator -> EvaluateAtContinuousIndex( pixel ) ;
 
-      itk::LinearInterpolateImageFunction<OutputImageType, double>::Pointer linearInterpolator =
-      itk::LinearInterpolateImageFunction<OutputImageType, double>::New();
-      linearInterpolator->SetInputImage(smoothedImage);
-
-      //std::cout << "Value at 1.3: " << linearInterpolator->EvaluateAtContinuousIndex(pixel) << std::endl;
-
-      pixelValue=  linearInterpolator->EvaluateAtContinuousIndex(pixel) ;
-
-    //pixelValue=  smoothedImage->GetPixel(pixel) ;
-
-      std::cout << pixel<<"Value at: " << static_cast<unsigned> (pixelValue) << std::endl;
-
-
-
+      //In case standard pixel use replace the previous line with:
+      // pixelValue =  filteredImage -> GetPixel( pixel ) ;
+      //std::cout << "Value at " << pixel <<" is "<< static_cast<unsigned> (pixelValue) << std::endl;
 
     return pixelValue;
 

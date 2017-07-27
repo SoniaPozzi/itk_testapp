@@ -1,6 +1,6 @@
 [GlobalParams]
   dicomDirectory=/Users/sonia/Projects/internshipINL/itk_testapp/tests/image_function/new_stack/
-  cells_per_pixel_vector='0.5 0.5 4.0'  
+  cells_per_pixel_vector='0.25 0.25 8.0'  
   filtering_params='0.0 0.125'
 
 # file_base =shoulder

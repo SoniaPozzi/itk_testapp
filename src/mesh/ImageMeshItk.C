@@ -16,13 +16,8 @@
 #include "ImageMeshItk.h"
 #include "MooseApp.h"
 
-// ITK headers
-#include <itkPoint.h>
-
 // libMesh includes
 #include "libmesh/mesh_generation.h"
-
-
 
 template <>
 InputParameters
@@ -82,9 +77,9 @@ ImageMeshItk::buildMesh3D()
 
   xpixels = outputImageSize[0], ypixels = outputImageSize[1], zpixels =outputImageSize[2];
 
-  _xmax = outputImageSize[0]*outputImageSpacing[0];
-  _ymax = outputImageSize[1]*outputImageSpacing[1];
-  _zmax = outputImageSize[2]*outputImageSpacing[2];
+  _xmax = outputImageSize[0] * outputImageSpacing[0];
+  _ymax = outputImageSize[1] * outputImageSpacing[1];
+  _zmax = outputImageSize[2] * outputImageSpacing[2];
 
   if (_scale_to_one)
   {
@@ -95,15 +90,15 @@ ImageMeshItk::buildMesh3D()
    
   }
 
-  std::cout<<"xmax"<<_xmax<<_ymax<<_zmax<<std::endl;
   // Compute the number of cells in the x and y direction based on
   // the user's cells_per_pixel parameter.  Note: we use ints here
   // because the GeneratedMesh params object uses ints for these...
   _nx = static_cast<int>(_cells_per_pixel_vector[0] * xpixels);
   _ny = static_cast<int>(_cells_per_pixel_vector[1] * ypixels);
-  _nz = static_cast<int>(_cells_per_pixel_vector[2]* zpixels);
+  _nz = static_cast<int>(_cells_per_pixel_vector[2] * zpixels);
 
-  std::cout<<"Mesh dimensions: nx "<<_nx<<", ny "<<_ny<<", nz "<<_nz<<std::endl;
+  std::cout << " Mesh dimensions: nx " << _nx << ", ny " << _ny << ", nz " << _nz << std::endl;
+  std::cout << "---------------------------------------------" << std::endl << std::endl;
 
   // Actually build the Mesh
   MeshTools::Generation::build_cube(dynamic_cast<UnstructuredMesh &>(getMesh()),
