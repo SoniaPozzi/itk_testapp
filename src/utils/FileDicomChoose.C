@@ -24,6 +24,7 @@
 #include "itkImageMaskSpatialObject.h"
 #include "itkRegionOfInterestImageFilter.h"
 #include "itkTIFFImageIOFactory.h"
+#include "itkDicomImageIOFactory.h"
 #include "itkImageSeriesWriter.h"
 #include "itkNeighborhoodConnectedImageFilter.h"
 #include "itkConfidenceConnectedImageFilter.h"
@@ -41,6 +42,17 @@
 #include "itkMetaDataDictionary.h"
 #include "itkMetaDataObject.h"
 #include "DICOMAppHelper.h"
+
+/////
+#include "itkImage.h"
+#include "itkGDCMImageIO.h"
+#include "itkGDCMSeriesFileNames.h"
+#include "itkImageSeriesReader.h"
+#include "itkImageFileWriter.h"
+#include "itkNiftiImageIO.h"
+#include "itkPermuteAxesImageFilter.h"
+
+
 
 template <>
 InputParameters
@@ -90,7 +102,11 @@ FileDicomChoose::FileDicomChoose(const InputParameters & params) : _status(0)
     reader -> SetImageIO( dicomIO );
 
     nameGenerator -> SetUseSeriesDetails( true );
-    nameGenerator -> AddSeriesRestriction("0008|0021" );
+
+    if ( 0 )
+    { 
+
+    nameGenerator -> AddSeriesRestriction("0008|0031");
     nameGenerator -> SetDirectory( _dicomDirectory );
 
     typedef std::vector< std::string >    SeriesIdContainer;
@@ -98,8 +114,6 @@ FileDicomChoose::FileDicomChoose(const InputParameters & params) : _status(0)
     SeriesIdContainer::const_iterator seriesItr = seriesUID.begin();
     SeriesIdContainer::const_iterator seriesEnd = seriesUID.end();
 
-    if ( 1 )
-    { 
       //starting from the series name: working no problem
       bool ret_value = false;
 
@@ -191,96 +205,338 @@ FileDicomChoose::FileDicomChoose(const InputParameters & params) : _status(0)
       }
     else
     {   
-      //trying to consider different temporal Siemens series: to be fixed 
-      std::string seriesName;
 
-      typedef itk::ExtractImageFilter< ShortImageType, ShortImageType2D > FilterType;
-      FilterType::Pointer extract = FilterType::New();
-      extract -> InPlaceOn();
-      extract -> SetDirectionCollapseToSubmatrix();
+          nameGenerator -> SetDirectory( _dicomDirectory );
+          ReaderType::Pointer reader = ReaderType::New();
 
-      unsigned int inputImageNumber = 0;
-      typedef itk::NumericSeriesFileNames    NameGeneratorType;
+          // 3D and 4D Image Types  
+          ShortImageType4D::Pointer image4D = ShortImageType4D::New();
+          ShortImageType::Pointer image3D = ShortImageType::New();
 
-      NameGeneratorType::Pointer nameGenerator = NameGeneratorType::New();
+          // set read I/O
+          reader->SetImageIO(dicomIO);
 
-      nameGenerator -> SetSeriesFormat( _dicomDirectory + "MR000000_%d.dcm" );
-      nameGenerator -> SetStartIndex( 4 );
-      nameGenerator -> SetEndIndex(5);
-      nameGenerator -> SetIncrementIndex( 1 );
-      std::vector<std::string> names = nameGenerator->GetFileNames();
+          // restriction on DICOM  (acquisition time)
+          const std::string entry_id = "0018|1090 ";
 
-      // List the files
+          nameGenerator->AddSeriesRestriction(entry_id);
 
-      std::vector<std::string>::iterator nit;
-      for (nit = names.begin();
-      nit != names.end();
-      nit++)
-      {
-      std::cout << "File: " << (*nit).c_str() << std::endl;
-      }
+          // Series ID
 
-      JoinSeriesImageFilterType::Pointer joinFilter = JoinSeriesImageFilterType::New();
-      joinFilter -> SetOrigin( 0.0 );
-      joinFilter -> SetSpacing( 1.0 );
-      joinFilter -> SetOrigin( reader -> GetOutput() -> GetOrigin()[2] );
-      joinFilter -> SetSpacing( reader -> GetOutput() -> GetSpacing()[2] );
-      reader -> SetImageIO( dicomIO );
+          typedef std::vector< std::string >    SeriesIdContainer;
+          const SeriesIdContainer & seriesUID = nameGenerator->GetSeriesUIDs();
+          SeriesIdContainer::const_iterator seriesItr = seriesUID.begin();
+          SeriesIdContainer::const_iterator seriesEnd = seriesUID.end();
 
-      std::vector<ShortImageType::RegionType> region_types(names.size());
-      std::vector<ShortImageType::SizeType>    size_types(names.size());
-      std::vector<ShortImageType::IndexType> start_types(names.size());
-      std::vector<ShortImageType::RegionType> desiredRegion_types(names.size());
-      std::vector<ReaderType::Pointer> reader_types;
-      std::vector<FilterType::Pointer> extract_types;
-      std::vector<ShortImageType2D::Pointer> inputImageTile_types;
+          // container with file names 
+          typedef std::vector< std::string >   FileNamesContainer;
 
-      const unsigned int sliceNumber = 0;
+          // figure out how many time points there are based on number of series 
+          unsigned int timepoints = 0;
+          while (seriesItr != seriesEnd){
+          timepoints++;
+          seriesItr++;
+          }
+          std::cout << "Number of time points  : " << timepoints << std::endl;
 
-      for(unsigned int fni = 0; fni<names.size(); fni++)
-      {  
+          // read first image
+          seriesItr = seriesUID.begin();
+          std::cout << "Reading first image : " << std::endl;
+          std::cout << seriesItr->c_str() << std::endl;
 
-        reader_types.push_back(ReaderType::New());
-        reader_types[fni] -> SetImageIO( dicomIO );
-        reader_types[fni] -> SetFileName( names[fni] );
-        reader_types[fni] -> UpdateLargestPossibleRegion();
-        reader_types[fni] -> Update();
+          std::string seriesIdentifier;
+          seriesIdentifier = seriesItr->c_str();
 
-        region_types[fni] = reader_types[fni]->GetOutput() -> GetLargestPossibleRegion();
+          // generate file names 
+          FileNamesContainer fileNames;
+          fileNames = nameGenerator->GetFileNames(seriesIdentifier);
+          FileNamesContainer::iterator fileiterator = fileNames.begin();
 
-        std::cout<<"Dicom size"<<reader_types[fni] -> GetOutput() -> GetLargestPossibleRegion() << std::endl;
-        extract_types.push_back(FilterType::New());
 
-        extract_types[fni] -> InPlaceOn();
-        extract_types[fni] -> SetDirectionCollapseToSubmatrix();
+          std::cout<<"sono qui"<<seriesIdentifier<<std::endl;
+          // get Image info
+          //itk::ImageIOBase::Pointer imageIO = getImageIO(fileiterator->c_str());
 
-        size_types[fni] = region_types[fni].GetSize();
-        start_types[fni] = region_types[fni].GetIndex();
-        size_types[fni][2] = 0;
-        start_types[fni][2] = sliceNumber;
+          // read file 
+          reader->SetFileNames(fileNames);
 
-        desiredRegion_types[fni].SetSize( size_types[fni] ); 
-        desiredRegion_types[fni].SetIndex( start_types[fni] );
+          try
+          {
+          reader->Update();
+          }
+          catch (itk::ExceptionObject &ex)
+          {
+          std::cout << ex << std::endl;
+          mooseError("Exception in file reader");
+          }
 
-        extract_types[fni] -> SetInput(   reader_types[fni]->GetOutput());
-        extract_types[fni] -> SetExtractionRegion( desiredRegion_types[fni] );
-        extract_types[fni] -> Update();
 
-        inputImageTile_types.push_back(ShortImageType2D::New());
+          // spacing 
+          const ShortImageType::SpacingType& spacing3D = reader->GetOutput()->GetSpacing();
+          std::cout << "Spacing 3D = " << spacing3D[0] << ", " << spacing3D[1] << ", " << spacing3D[2] << std::endl;
+          // origin info 
+          const ShortImageType::PointType origin3D = reader->GetOutput()->GetOrigin();
+          std::cout << "Origin  3D = " << origin3D[0] << ", " << origin3D[1] << ", " << origin3D[2] << std::endl;
+          // get 3D size 
+          const ShortImageType::SizeType size3D = reader->GetOutput()->GetBufferedRegion().GetSize();
 
-        inputImageTile_types[fni] = extract_types[fni] -> GetOutput();
-        inputImageTile_types[fni] -> Allocate();
+          // decleare 4D parameters 
+          ShortImageType4D::SpacingType spacing4D;
+          ShortImageType4D::PointType origin4D;
+          ShortImageType4D::SizeType size4D;
 
-        std::cout << "Slice Dicom size" << inputImageTile_types[fni] -> GetLargestPossibleRegion() << std::endl;
-        inputImageNumber++;
+          // copy parameters from 3D
+          for (int i = 0; i < 3; ++i){
+          spacing4D[i] = spacing3D[i];
+          origin4D[i] = origin3D[i];
+          size4D[i] = size3D[i];
+          }
 
-        joinFilter -> SetInput( inputImageNumber , inputImageTile_types[fni] );
+          // add 4-th dimension 
+          spacing4D[3] = 1;
+          origin4D[3] = 0;
+          size4D[3] = timepoints;
 
-      }
+          // start 
+          ShortImageType4D::IndexType start4D;
+          start4D.Fill(0);
 
-      joinFilter -> Update();
-      ShortImageType::Pointer newDicom = ShortImageType::New();
-      newDicom = joinFilter -> GetOutput();
+          // set  region 
+          ShortImageType4D::RegionType region4D(start4D, size4D);
+
+          std::cout << "Spacing 4D = " << spacing4D[0] << ", " << spacing4D[1] << ", " << spacing4D[2] << ", " << spacing4D[3] << std::endl;
+          std::cout << "Size 4D = " << size4D[0] << ", " << size4D[1] << ", " << size4D[2] << ", " << size4D[3] << std::endl;
+
+          // allocate 4D image  
+          image4D->SetRegions(region4D);
+          image4D->SetSpacing(spacing4D);
+          image4D->SetOrigin(origin4D);
+          image4D->Allocate();
+
+          // point again to first series ID   
+          seriesItr = seriesUID.begin();
+
+          // iterators to loop into images 
+          typedef itk::ImageRegionConstIterator< ShortImageType >  Iterator3D;
+          typedef itk::ImageRegionIterator< ShortImageType4D >  Iterator4D;
+
+          // define pointer to 4d image
+          Iterator4D it4(image4D, image4D->GetBufferedRegion());
+          it4.GoToBegin();
+
+          // Loop to read the Dicom volumes one by one   
+          unsigned short int idx = 0;
+          while (seriesItr != seriesEnd){
+
+          seriesIdentifier = seriesItr->c_str();
+          std::cout << "Reading series " << std::endl;
+          std::cout << seriesItr->c_str() << std::endl;
+
+          // generate file names 
+          fileNames = nameGenerator->GetFileNames(seriesIdentifier);
+
+          for(unsigned int fni = 0; fni<fileNames.size(); fni++)
+          {  std::cout<<"FN "<<fileNames[fni]<<std::endl;
+
+            }
+
+          // read volume files 
+          reader->SetFileNames(fileNames);
+
+          // set image3D 
+          image3D = reader->GetOutput();
+          image3D->SetRegions(reader->GetOutput()->GetRequestedRegion());
+          image3D->CopyInformation(reader->GetOutput());
+          image3D->Allocate();
+
+          std::cout << "reading image volume " << idx << std::endl << std::endl;
+          try
+          {
+          reader->Update();
+          }
+          catch (itk::ExceptionObject &ex)
+          {
+          std::cout << ex << std::endl;
+               mooseError("Exception in file reader");
+          }
+
+          // point to the current image     
+          Iterator3D it3(image3D, image3D->GetBufferedRegion());
+          it3.GoToBegin();
+
+          while (!it3.IsAtEnd())
+          {
+          it4.Set(it3.Get());
+          ++it3;
+          ++it4;
+          }
+
+          // increment iterator
+          seriesItr++; 
+          idx++;
+
+          std::string format2 =  std::string( "Output/Rescaled-%d.dcm" );
+          itk::NumericSeriesFileNames::Pointer fnames2 = itk::NumericSeriesFileNames::New();
+          fnames2->SetStartIndex( 0 );
+          fnames2->SetEndIndex(  0);
+          fnames2->SetIncrementIndex( 1 );
+          fnames2->SetSeriesFormat( format2.c_str() );
+
+          typedef itk::ImageSeriesWriter<  ShortImageType, ShortImageType>  SeriesWriterType;
+          SeriesWriterType::Pointer seriesWriter = SeriesWriterType::New();
+
+          seriesWriter->SetInput( image3D );
+          seriesWriter->SetImageIO( dicomIO );
+
+          // Software Guide : BeginCodeSnippet
+          nameGenerator->SetOutputDirectory( _dicomDirectory );
+
+          seriesWriter->SetFileNames(fnames2->GetFileNames());
+
+          seriesWriter->SetMetaDataDictionaryArray(
+                           reader->GetMetaDataDictionaryArray() );  
+          try{ seriesWriter->Update();}
+          catch (itk::ExceptionObject &ex)
+          {
+          std::cout << ex << std::endl;
+          mooseError("Exception in file writer");
+          }
+
+
+
+          }
+
+
+          typedef itk::PermuteAxesImageFilter< ShortImageType4D > SwapFilterType;
+          SwapFilterType::Pointer swap = SwapFilterType::New();
+          swap->SetInput( image4D );
+
+          SwapFilterType::PermuteOrderArrayType order;
+          order[0] = 0;
+          order[1] = 1;
+          order[2] = 3;
+          order[3] = 2;
+          swap->SetOrder( order );
+
+
+          const ShortImageType4D::SizeType size4Dr = swap->GetOutput()->GetBufferedRegion().GetSize();
+          std::cout<<"new size"<<size4Dr <<std::endl;
+
+          std::string format3 =  std::string( "Output/-rescaled-%d.nii.gz" );
+          itk::NumericSeriesFileNames::Pointer fnames3 = itk::NumericSeriesFileNames::New();
+          fnames3->SetStartIndex( 0 );
+          fnames3->SetEndIndex(   25-1 );
+          fnames3->SetIncrementIndex( 1 );
+          fnames3->SetSeriesFormat( format3.c_str() );
+
+          std::cout << " creating nifti file ...   " << std::endl << std::endl;
+          typedef itk::Image<short, 4>  DWI;
+          itk::NiftiImageIO::Pointer nifti_io = itk::NiftiImageIO::New();
+
+          itk::ImageFileWriter<DWI>::Pointer dwi_writer = itk::ImageFileWriter<DWI>::New();
+          dwi_writer->SetFileName("test.nii.gz");
+          dwi_writer->SetInput(swap->GetOutput());
+
+          dwi_writer->SetImageIO(nifti_io);
+          dwi_writer->Update();
+
+
+return ;
+
+
+      //we try to read the cardiac series:
+
+
+      // //trying to consider different temporal Siemens series: to be fixed 
+      // std::string seriesName;
+
+      // typedef itk::ExtractImageFilter< ShortImageType, ShortImageType2D > FilterType;
+      // FilterType::Pointer extract = FilterType::New();
+      // extract -> InPlaceOn();
+      // extract -> SetDirectionCollapseToSubmatrix();
+
+      // unsigned int inputImageNumber = 0;
+      // typedef itk::NumericSeriesFileNames    NameGeneratorType;
+
+      // NameGeneratorType::Pointer nameGenerator = NameGeneratorType::New();
+
+      // nameGenerator -> SetSeriesFormat( _dicomDirectory + "MR000000_%d.dcm" );
+      // nameGenerator -> SetStartIndex( 4 );
+      // nameGenerator -> SetEndIndex(5);
+      // nameGenerator -> SetIncrementIndex( 1 );
+      // std::vector<std::string> names = nameGenerator->GetFileNames();
+
+      // // List the files
+
+      // std::vector<std::string>::iterator nit;
+      // for (nit = names.begin();
+      // nit != names.end();
+      // nit++)
+      // {
+      // std::cout << "File: " << (*nit).c_str() << std::endl;
+      // }
+
+      // JoinSeriesImageFilterType::Pointer joinFilter = JoinSeriesImageFilterType::New();
+      // joinFilter -> SetOrigin( 0.0 );
+      // joinFilter -> SetSpacing( 1.0 );
+      // joinFilter -> SetOrigin( reader -> GetOutput() -> GetOrigin()[2] );
+      // joinFilter -> SetSpacing( reader -> GetOutput() -> GetSpacing()[2] );
+      // reader -> SetImageIO( dicomIO );
+
+      // std::vector<ShortImageType::RegionType> region_types(names.size());
+      // std::vector<ShortImageType::SizeType>    size_types(names.size());
+      // std::vector<ShortImageType::IndexType> start_types(names.size());
+      // std::vector<ShortImageType::RegionType> desiredRegion_types(names.size());
+      // std::vector<ReaderType::Pointer> reader_types;
+      // std::vector<FilterType::Pointer> extract_types;
+      // std::vector<ShortImageType2D::Pointer> inputImageTile_types;
+
+      // const unsigned int sliceNumber = 0;
+
+      // for(unsigned int fni = 0; fni<names.size(); fni++)
+      // {  
+
+      //   reader_types.push_back(ReaderType::New());
+      //   reader_types[fni] -> SetImageIO( dicomIO );
+      //   reader_types[fni] -> SetFileName( names[fni] );
+      //   reader_types[fni] -> UpdateLargestPossibleRegion();
+      //   reader_types[fni] -> Update();
+
+      //   region_types[fni] = reader_types[fni]->GetOutput() -> GetLargestPossibleRegion();
+
+      //   std::cout<<"Dicom size"<<reader_types[fni] -> GetOutput() -> GetLargestPossibleRegion() << std::endl;
+      //   extract_types.push_back(FilterType::New());
+
+      //   extract_types[fni] -> InPlaceOn();
+      //   extract_types[fni] -> SetDirectionCollapseToSubmatrix();
+
+      //   size_types[fni] = region_types[fni].GetSize();
+      //   start_types[fni] = region_types[fni].GetIndex();
+      //   size_types[fni][2] = 0;
+      //   start_types[fni][2] = sliceNumber;
+
+      //   desiredRegion_types[fni].SetSize( size_types[fni] ); 
+      //   desiredRegion_types[fni].SetIndex( start_types[fni] );
+
+      //   extract_types[fni] -> SetInput(   reader_types[fni]->GetOutput());
+      //   extract_types[fni] -> SetExtractionRegion( desiredRegion_types[fni] );
+      //   extract_types[fni] -> Update();
+
+      //   inputImageTile_types.push_back(ShortImageType2D::New());
+
+      //   inputImageTile_types[fni] = extract_types[fni] -> GetOutput();
+      //   inputImageTile_types[fni] -> Allocate();
+
+      //   std::cout << "Slice Dicom size" << inputImageTile_types[fni] -> GetLargestPossibleRegion() << std::endl;
+      //   inputImageNumber++;
+
+      //   joinFilter -> SetInput( inputImageNumber , inputImageTile_types[fni] );
+
+      // }
+
+      // joinFilter -> Update();
+      // ShortImageType::Pointer newDicom = ShortImageType::New();
+      // newDicom = joinFilter -> GetOutput();
 
     }
 
@@ -586,3 +842,22 @@ FileDicomChoose::errorCheck()
       break;
   }
 }
+
+
+inline itk::ImageIOBase::IOPixelType FileDicomChoose::pixel_type(itk::ImageIOBase::Pointer imageIO){
+  return imageIO->GetPixelType();
+}
+
+
+inline itk::ImageIOBase::Pointer FileDicomChoose::getImageIO(std::string input){
+  itk::ImageIOBase::Pointer imageIO = itk::ImageIOFactory::CreateImageIO(input.c_str(), itk::ImageIOFactory::ReadMode);
+
+
+std::cout<<"qui"<<std::endl;
+  imageIO->SetFileName(input.c_str());
+  imageIO->ReadImageInformation();
+std::cout<<"quo"<<std::endl;
+  return imageIO;
+}
+
+

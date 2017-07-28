@@ -19,7 +19,7 @@
 #include "itkGDCMSeriesFileNames.h"
 #include "itkImageSeriesReader.h"
 #include "itkImageIOBase.h"
-
+#include <itkImage.h>
 
 #include "itkDICOMSeriesFileNames.h"
 #include "itkCastImageFilter.h"
@@ -56,7 +56,8 @@ class FileDicomChoose
   FileDicomChoose(const InputParameters & params);
   virtual ~FileDicomChoose() = default;
   std::string & dicomDirectory() { return _dicomDirectory; }
-
+  inline itk::ImageIOBase::IOPixelType pixel_type(itk::ImageIOBase::Pointer imageIO);
+inline itk::ImageIOBase::Pointer getImageIO(std::string input);
   protected:
   
   int status(){ return _status; }
@@ -85,6 +86,8 @@ class FileDicomChoose
   typedef itk::Image< OutputPixelType , 3 >      OutputImageType;
   typedef itk::Image< OutputPixelType , 2 >      OutputImageType2D;   
   typedef itk::Image< ShortPixelType ,  2 >      ShortImageType2D;
+
+  typedef itk::Image< ShortPixelType ,  4 >      ShortImageType4D;
 
   typedef itk::ImageSeriesReader< ShortImageType > ReaderType;
   typedef itk::ImageSeriesReader< ShortImageType2D > ReaderType2;
