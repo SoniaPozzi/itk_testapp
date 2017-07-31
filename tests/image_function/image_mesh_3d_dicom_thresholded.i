@@ -71,5 +71,6 @@
 []
 
 [Outputs]
+  file_base = brain_thresholded
   exodus = true
 []
