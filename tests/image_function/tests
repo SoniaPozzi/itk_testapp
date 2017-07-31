@@ -1,14 +1,14 @@
 [Tests]
 
-  [./3d_threshold]
-    # Test the ability to threshold the image
+  [./3d]
+    # Test to create the mesh starting from a dicom image
     type = Exodiff
     input = image_mesh_3d_dicom.i
     exodiff = brain.e
   [../]
 
-  [./3d_threshold]
-    # Test the ability to threshold the image
+  [./3d_mesh_modifier]
+    # Test to create the mesh thresholding a dicom image
     type = Exodiff
     input = image_mesh_3d_dicom_thresholded.i
     exodiff = brain_thresholded.e
