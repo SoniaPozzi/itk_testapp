@@ -124,6 +124,7 @@ ImageSamplerItk::setupImageSampler(MooseMesh & mesh)
 Real
 ImageSamplerItk::sample(const Point & p)
 {
+
     if (!_bounding_box.contains_point(p))
       return 0.0;
  

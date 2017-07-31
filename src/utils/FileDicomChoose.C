@@ -52,6 +52,9 @@
 #include "itkNiftiImageIO.h"
 #include "itkPermuteAxesImageFilter.h"
 
+#include "itkExtractImageFilter.h"
+#include "itkComposeImageFilter.h"
+
 
 
 template <>
@@ -103,7 +106,11 @@ FileDicomChoose::FileDicomChoose(const InputParameters & params) : _status(0)
 
     nameGenerator -> SetUseSeriesDetails( true );
 
-    if ( 0 )
+                      typedef itk::ExtractImageFilter< ShortImageType4D, ShortImageType > ExtractFilterType;
+                  
+                    ExtractFilterType::Pointer extracter = ExtractFilterType::New();
+
+    if ( 1 )
     { 
 
     nameGenerator -> AddSeriesRestriction("0008|0031");
@@ -204,7 +211,7 @@ FileDicomChoose::FileDicomChoose(const InputParameters & params) : _status(0)
         }
       }
     else
-    {   
+    {   ///first trial
 
           nameGenerator -> SetDirectory( _dicomDirectory );
           ReaderType::Pointer reader = ReaderType::New();
@@ -375,35 +382,6 @@ FileDicomChoose::FileDicomChoose(const InputParameters & params) : _status(0)
           seriesItr++; 
           idx++;
 
-          std::string format2 =  std::string( "Output/Rescaled-%d.dcm" );
-          itk::NumericSeriesFileNames::Pointer fnames2 = itk::NumericSeriesFileNames::New();
-          fnames2->SetStartIndex( 0 );
-          fnames2->SetEndIndex(  0);
-          fnames2->SetIncrementIndex( 1 );
-          fnames2->SetSeriesFormat( format2.c_str() );
-
-          typedef itk::ImageSeriesWriter<  ShortImageType, ShortImageType>  SeriesWriterType;
-          SeriesWriterType::Pointer seriesWriter = SeriesWriterType::New();
-
-          seriesWriter->SetInput( image3D );
-          seriesWriter->SetImageIO( dicomIO );
-
-          // Software Guide : BeginCodeSnippet
-          nameGenerator->SetOutputDirectory( _dicomDirectory );
-
-          seriesWriter->SetFileNames(fnames2->GetFileNames());
-
-          seriesWriter->SetMetaDataDictionaryArray(
-                           reader->GetMetaDataDictionaryArray() );  
-          try{ seriesWriter->Update();}
-          catch (itk::ExceptionObject &ex)
-          {
-          std::cout << ex << std::endl;
-          mooseError("Exception in file writer");
-          }
-
-
-
           }
 
 
@@ -417,34 +395,59 @@ FileDicomChoose::FileDicomChoose(const InputParameters & params) : _status(0)
           order[2] = 3;
           order[3] = 2;
           swap->SetOrder( order );
+          swap->Update();
+
+          ShortImageType4D::Pointer inputVol = swap->GetOutput();
+
+          // "inputVol" is read as a 4D image. Here we extract each 3D component and write that to disk
+  
+            ShortImageType4D::SizeType inputSize = swap->GetOutput()->GetLargestPossibleRegion().GetSize();
+
+            ShortImageType4D::IndexType inputIndex = swap->GetOutput()->GetLargestPossibleRegion().GetIndex();
+
+            const ShortImageType4D::SizeType size4Dr = swap->GetOutput()->GetBufferedRegion().GetSize();
+            std::cout<<"new size"<<size4Dr <<std::endl;
 
 
-          const ShortImageType4D::SizeType size4Dr = swap->GetOutput()->GetBufferedRegion().GetSize();
-          std::cout<<"new size"<<size4Dr <<std::endl;
+            const unsigned int volumeCount = size4Dr[3];
 
-          std::string format3 =  std::string( "Output/-rescaled-%d.nii.gz" );
-          itk::NumericSeriesFileNames::Pointer fnames3 = itk::NumericSeriesFileNames::New();
-          fnames3->SetStartIndex( 0 );
-          fnames3->SetEndIndex(   25-1 );
-          fnames3->SetIncrementIndex( 1 );
-          fnames3->SetSeriesFormat( format3.c_str() );
+         // for( size_t componentNumber = 0; componentNumber < volumeCount; ++componentNumber )
+         //   {
+            ShortImageType4D::SizeType extractSize = size4Dr;
+            extractSize[3] = 0;
+            ShortImageType4D::IndexType extractIndex = inputIndex;
+            extractIndex[3] = 1;
+            ShortImageType4D::RegionType extractRegion33(extractIndex, extractSize);
 
-          std::cout << " creating nifti file ...   " << std::endl << std::endl;
-          typedef itk::Image<short, 4>  DWI;
-          itk::NiftiImageIO::Pointer nifti_io = itk::NiftiImageIO::New();
+            extracter->SetExtractionRegion( extractRegion33 );
+            extracter->SetInput( swap->GetOutput() );
+            extracter->SetDirectionCollapseToIdentity();
+            extracter->UpdateLargestPossibleRegion();
 
-          itk::ImageFileWriter<DWI>::Pointer dwi_writer = itk::ImageFileWriter<DWI>::New();
-          dwi_writer->SetFileName("test.nii.gz");
-          dwi_writer->SetInput(swap->GetOutput());
+            // Need to zeropad to ensure that files are printed in order.
+            // std::stringstream fNumber("");
+            // fNumber << std::setw(3) << std::setfill('0') <<2;
+            // const std::string fn = "prova" + fNumber.str() + ".nii";
 
-          dwi_writer->SetImageIO(nifti_io);
-          dwi_writer->Update();
+            // std::cout << "- Write image: " << fn << std::endl;
+
+            // typedef itk::ImageFileWriter<ShortImageType> Image3DWriterType;
+            // Image3DWriterType::Pointer image3DWriter = Image3DWriterType::New();
+            // image3DWriter->SetFileName( fn );
+            // image3DWriter->SetInput( extracter->GetOutput() );
+            // try
+            //   {
+            //   image3DWriter->Update();
+            //   }
+            // catch( itk::ExceptionObject & excp )
+            //   {
+            //   std::cerr << "Exception thrown while writing the image" << std::endl;
+            //   std::cerr << excp << std::endl;
+            //   
 
 
-return ;
 
-
-      //we try to read the cardiac series:
+      //we try to read the cardiac series: //second trial
 
 
       // //trying to consider different temporal Siemens series: to be fixed 
@@ -852,11 +855,8 @@ inline itk::ImageIOBase::IOPixelType FileDicomChoose::pixel_type(itk::ImageIOBas
 inline itk::ImageIOBase::Pointer FileDicomChoose::getImageIO(std::string input){
   itk::ImageIOBase::Pointer imageIO = itk::ImageIOFactory::CreateImageIO(input.c_str(), itk::ImageIOFactory::ReadMode);
 
-
-std::cout<<"qui"<<std::endl;
   imageIO->SetFileName(input.c_str());
   imageIO->ReadImageInformation();
-std::cout<<"quo"<<std::endl;
   return imageIO;
 }
 

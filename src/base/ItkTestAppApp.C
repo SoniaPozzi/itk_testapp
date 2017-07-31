@@ -6,6 +6,7 @@
 
 #include "ImageFunctionItk.h"
 #include "ImageMeshItk.h"
+#include "ImageThresholdMesh.h"
 
 
 //#include "ImageFunctionItk.h"
@@ -53,6 +54,7 @@ ItkTestAppApp::registerObjects(Factory & factory)
 {
    registerMesh(ImageMeshItk);
    registerFunction(ImageFunctionItk);
+  registerMeshModifier(ImageThresholdMesh);
 }
 
 // External entry point for dynamic syntax association
