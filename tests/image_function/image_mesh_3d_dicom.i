@@ -1,5 +1,5 @@
 [GlobalParams]
-  dicomDirectory=/Users/sonia/Projects/internshipINL/itk_testapp/tests/image_function/new_stack/    # CRT001/SE000000
+  dicomDirectory=/Users/sonia/Projects/internshipINL/itk_testapp/tests/image_function/dicom_stack/brain/    # CRT001/SE000000
   cells_per_pixel_vector='0.25 0.25 8.0'  
   filtering_params='0.0 0.125'
 
@@ -29,8 +29,8 @@
 [MeshModifiers]
   [./meshModifier]
     type = ImageThresholdMesh
-    lower_threshold=13
-    upper_threshold=120
+    lower_threshold=1
+    upper_threshold=255
   [../]
 []
 
