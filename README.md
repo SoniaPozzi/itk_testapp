@@ -18,11 +18,7 @@ A Mesh Constructor (ImageMeshItk):
 	
 
 A Function (ImageFunctionItk):
-	 - Based on ImageSampler,  ImageFunctionItk fills the mesh with the pixels values from the cropped and filtered series .
-	
-	 	
-ImageSampler:
-	- Based on FileDicomChoose,  ImageSampler fills the mesh with the pixels values from the cropped and filtered series .
+	 - Based on ImageSampler,  ImageFunctionItk fills the mesh with the pixels values from the cropped and filtered series . Based on FileDicomChoose,  ImageSampler fills the mesh with the pixels values from the cropped and filtered series .
 	
  
  
