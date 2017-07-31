@@ -1,4 +1,12 @@
 [Tests]
+
+  [./3d_threshold]
+    # Test the ability to threshold the image
+    type = Exodiff
+    input = image_mesh_3d_dicom.i
+    exodiff = brain.e
+  [../]
+
   [./3d_threshold]
     # Test the ability to threshold the image
     type = Exodiff
