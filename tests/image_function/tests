@@ -3,6 +3,6 @@
     # Test the ability to threshold the image
     type = Exodiff
     input = image_mesh_3d_dicom.i
-    exodiff = brain_out.e
+    exodiff = brain.e
   [../]
 []
