@@ -106,11 +106,11 @@ FileDicomChoose::FileDicomChoose(const InputParameters & params) : _status(0)
 
     nameGenerator -> SetUseSeriesDetails( true );
 
-                      typedef itk::ExtractImageFilter< ShortImageType4D, ShortImageType > ExtractFilterType;
+    typedef itk::ExtractImageFilter< ShortImageType4D, ShortImageType > ExtractFilterType;
                   
-                    ExtractFilterType::Pointer extracter = ExtractFilterType::New();
+    ExtractFilterType::Pointer extracter = ExtractFilterType::New();
 
-    if ( 1 )
+    if ( 0)
     { 
 
     nameGenerator -> AddSeriesRestriction("0008|0031");
@@ -211,9 +211,18 @@ FileDicomChoose::FileDicomChoose(const InputParameters & params) : _status(0)
         }
       }
     else
-    {   ///first trial
+     {// third
+     
+
+       
+  // Software
+       ///first trial
 
           nameGenerator -> SetDirectory( _dicomDirectory );
+          nameGenerator -> SetUseSeriesDetails( true );
+         nameGenerator -> AddSeriesRestriction("0008|1060");
+         nameGenerator -> AddSeriesRestriction("0008|0031");
+    
           ReaderType::Pointer reader = ReaderType::New();
 
           // 3D and 4D Image Types  
@@ -223,11 +232,8 @@ FileDicomChoose::FileDicomChoose(const InputParameters & params) : _status(0)
           // set read I/O
           reader->SetImageIO(dicomIO);
 
-          // restriction on DICOM  (acquisition time)
-          const std::string entry_id = "0018|1090 ";
-
-          nameGenerator->AddSeriesRestriction(entry_id);
-
+          // // restriction on DICOM  (this should be the TriggerTime 0018|1060)
+          
           // Series ID
 
           typedef std::vector< std::string >    SeriesIdContainer;
@@ -254,19 +260,22 @@ FileDicomChoose::FileDicomChoose(const InputParameters & params) : _status(0)
           std::string seriesIdentifier;
           seriesIdentifier = seriesItr->c_str();
 
-          // generate file names 
+
+             // generate file names 
           FileNamesContainer fileNames;
           fileNames = nameGenerator->GetFileNames(seriesIdentifier);
           FileNamesContainer::iterator fileiterator = fileNames.begin();
 
-
-          std::cout<<"sono qui"<<seriesIdentifier<<std::endl;
-          // get Image info
-          //itk::ImageIOBase::Pointer imageIO = getImageIO(fileiterator->c_str());
-
           // read file 
           reader->SetFileNames(fileNames);
 
+          for  (int i = 0; i<fileNames.size(); i++)
+          {
+          std::cout<<fileNames[i]<<std::endl;
+
+          }
+          std::cout<<"//////////////////////////"<<std::endl;
+          
           try
           {
           reader->Update();
@@ -277,152 +286,194 @@ FileDicomChoose::FileDicomChoose(const InputParameters & params) : _status(0)
           mooseError("Exception in file reader");
           }
 
+      
+          typedef itk::MetaDataObject< std::string > MetaDataStringType;
+            typedef itk::MetaDataDictionary   DictionaryType;
+            const  DictionaryType & dictionary = dicomIO->GetMetaDataDictionary();
+            DictionaryType::ConstIterator itr = dictionary.Begin();
+            DictionaryType::ConstIterator end = dictionary.End();
 
-          // spacing 
-          const ShortImageType::SpacingType& spacing3D = reader->GetOutput()->GetSpacing();
-          std::cout << "Spacing 3D = " << spacing3D[0] << ", " << spacing3D[1] << ", " << spacing3D[2] << std::endl;
-          // origin info 
-          const ShortImageType::PointType origin3D = reader->GetOutput()->GetOrigin();
-          std::cout << "Origin  3D = " << origin3D[0] << ", " << origin3D[1] << ", " << origin3D[2] << std::endl;
-          // get 3D size 
-          const ShortImageType::SizeType size3D = reader->GetOutput()->GetBufferedRegion().GetSize();
 
-          // decleare 4D parameters 
-          ShortImageType4D::SpacingType spacing4D;
-          ShortImageType4D::PointType origin4D;
-          ShortImageType4D::SizeType size4D;
-
-          // copy parameters from 3D
-          for (int i = 0; i < 3; ++i){
-          spacing4D[i] = spacing3D[i];
-          origin4D[i] = origin3D[i];
-          size4D[i] = size3D[i];
+       while( itr != end )
+        {
+        itk::MetaDataObjectBase::Pointer  entry = itr->second;
+        MetaDataStringType::Pointer entryvalue =
+          dynamic_cast<MetaDataStringType *>( entry.GetPointer() );
+        if( entryvalue )
+          {
+          std::string tagkey   = itr->first;
+          std::string tagvalue = entryvalue->GetMetaDataObjectValue();
+          std::cout << tagkey <<  " = " << tagvalue << std::endl;
           }
+        ++itr;
+     }
+  // 
 
-          // add 4-th dimension 
-          spacing4D[3] = 1;
-          origin4D[3] = 0;
-          size4D[3] = timepoints;
+  //           std::string entryId = "0018|1060";  //"0008|1060";
+  //           DictionaryType::ConstIterator tagItr = dictionary.Find( entryId );
+  //           if( tagItr == end )
+  //           {
+  //           std::cerr << "Tag " << entryId;
+  //           std::cerr << " not found in the DICOM header" << std::endl;
+  //           mooseError("tag non found");
+  //           }
 
-          // start 
-          ShortImageType4D::IndexType start4D;
-          start4D.Fill(0);
+  //           for  (int i = 0; i<fileNames.size(); i++)
+  //           {
+  //           std::cout<<fileNames[i]<<std::endl;
 
-          // set  region 
-          ShortImageType4D::RegionType region4D(start4D, size4D);
+  //           }
+  //           std::cout<<"//////////////////////////"<<std::endl;
 
-          std::cout << "Spacing 4D = " << spacing4D[0] << ", " << spacing4D[1] << ", " << spacing4D[2] << ", " << spacing4D[3] << std::endl;
-          std::cout << "Size 4D = " << size4D[0] << ", " << size4D[1] << ", " << size4D[2] << ", " << size4D[3] << std::endl;
+      
+  //           MetaDataStringType::ConstPointer entryvalue =
+  //           dynamic_cast<const MetaDataStringType *>( tagItr->second.GetPointer() );
+  //           if( entryvalue )
+  //           {
+  //           std::string tagvalue = entryvalue->GetMetaDataObjectValue();
+  //           std::cout << "Patient's Name (" << entryId <<  ") ";
+  //           std::cout << " is: " << tagvalue << std::endl;
+  //           }
+  //           else
+  //           {
+  //           std::cerr << "Entry was not of string type" << std::endl;
+  //         mooseError("string type");
+          
+  //           }
 
-          // allocate 4D image  
-          image4D->SetRegions(region4D);
-          image4D->SetSpacing(spacing4D);
-          image4D->SetOrigin(origin4D);
-          image4D->Allocate();
+       
 
-          // point again to first series ID   
-          seriesItr = seriesUID.begin();
 
-          // iterators to loop into images 
-          typedef itk::ImageRegionConstIterator< ShortImageType >  Iterator3D;
-          typedef itk::ImageRegionIterator< ShortImageType4D >  Iterator4D;
+            // spacing 
+            const ShortImageType::SpacingType& spacing3D = reader->GetOutput()->GetSpacing();
+            std::cout << "Spacing 3D = " << spacing3D[0] << ", " << spacing3D[1] << ", " << spacing3D[2] << std::endl;
+            // origin info 
+            const ShortImageType::PointType origin3D = reader->GetOutput()->GetOrigin();
+            std::cout << "Origin  3D = " << origin3D[0] << ", " << origin3D[1] << ", " << origin3D[2] << std::endl;
+            // get 3D size 
+            const ShortImageType::SizeType size3D = reader->GetOutput()->GetBufferedRegion().GetSize();
 
-          // define pointer to 4d image
-          Iterator4D it4(image4D, image4D->GetBufferedRegion());
-          it4.GoToBegin();
+            // decleare 4D parameters 
+            ShortImageType4D::SpacingType spacing4D;
+            ShortImageType4D::PointType origin4D;
+            ShortImageType4D::SizeType size4D;
 
-          // Loop to read the Dicom volumes one by one   
-          unsigned short int idx = 0;
-          while (seriesItr != seriesEnd){
+            // copy parameters from 3D
+            for (int i = 0; i < 3; ++i){
+            spacing4D[i] = spacing3D[i];
+            origin4D[i] = origin3D[i];
+            size4D[i] = size3D[i];
+            }
 
-          seriesIdentifier = seriesItr->c_str();
-          std::cout << "Reading series " << std::endl;
-          std::cout << seriesItr->c_str() << std::endl;
+            // add 4-th dimension 
+            spacing4D[3] = 1;
+            origin4D[3] = 0;
+            size4D[3] = timepoints;
 
-          // generate file names 
-          fileNames = nameGenerator->GetFileNames(seriesIdentifier);
+            // start 
+            ShortImageType4D::IndexType start4D;
+            start4D.Fill(0);
 
-          for(unsigned int fni = 0; fni<fileNames.size(); fni++)
-          {  std::cout<<"FN "<<fileNames[fni]<<std::endl;
+            // set  region 
+            ShortImageType4D::RegionType region4D(start4D, size4D);
+
+            std::cout << "Spacing 4D = " << spacing4D[0] << ", " << spacing4D[1] << ", " << spacing4D[2] << ", " << spacing4D[3] << std::endl;
+            std::cout << "Size 4D = " << size4D[0] << ", " << size4D[1] << ", " << size4D[2] << ", " << size4D[3] << std::endl;
+
+            // allocate 4D image  
+            image4D->SetRegions(region4D);
+            image4D->SetSpacing(spacing4D);
+            image4D->SetOrigin(origin4D);
+            image4D->Allocate();
+
+            // point again to first series ID   
+            seriesItr = seriesUID.begin();
+
+            // iterators to loop into images 
+            typedef itk::ImageRegionConstIterator< ShortImageType >  Iterator3D;
+            typedef itk::ImageRegionIterator< ShortImageType4D >  Iterator4D;
+
+            // define pointer to 4d image
+            Iterator4D it4(image4D, image4D->GetBufferedRegion());
+            it4.GoToBegin();
+
+            // Loop to read the Dicom volumes one by one   
+            unsigned short int idx = 0;
+            while (seriesItr != seriesEnd){
+
+            seriesIdentifier = seriesItr->c_str();
+            std::cout << "Reading series " << std::endl;
+            std::cout << seriesItr->c_str() << std::endl;
+
+            // generate file names 
+            fileNames = nameGenerator->GetFileNames(seriesIdentifier);
+
+            for(unsigned int fni = 0; fni<fileNames.size(); fni++)
+            {  std::cout<<"FN "<<fileNames[fni]<<std::endl;
+
+              }
+
+            // read volume files 
+            reader->SetFileNames(fileNames);
+
+            // set image3D 
+            image3D = reader->GetOutput();
+            image3D->SetRegions(reader->GetOutput()->GetRequestedRegion());
+            image3D->CopyInformation(reader->GetOutput());
+            image3D->Allocate();
+
+            std::cout << "reading image volume " << idx << std::endl << std::endl;
+            try
+            {
+            reader->Update();
+            }
+            catch (itk::ExceptionObject &ex)
+            {
+            std::cout << ex << std::endl;
+                 mooseError("Exception in file reader");
+            }
+
+            // point to the current image     
+            Iterator3D it3(image3D, image3D->GetBufferedRegion());
+            it3.GoToBegin();
+
+            while (!it3.IsAtEnd())
+            {
+            it4.Set(it3.Get());
+            ++it3;
+            ++it4;
+            }
+
+            // increment iterator
+            seriesItr++; 
+            idx++;
 
             }
 
-          // read volume files 
-          reader->SetFileNames(fileNames);
-
-          // set image3D 
-          image3D = reader->GetOutput();
-          image3D->SetRegions(reader->GetOutput()->GetRequestedRegion());
-          image3D->CopyInformation(reader->GetOutput());
-          image3D->Allocate();
-
-          std::cout << "reading image volume " << idx << std::endl << std::endl;
-          try
-          {
-          reader->Update();
-          }
-          catch (itk::ExceptionObject &ex)
-          {
-          std::cout << ex << std::endl;
-               mooseError("Exception in file reader");
-          }
-
-          // point to the current image     
-          Iterator3D it3(image3D, image3D->GetBufferedRegion());
-          it3.GoToBegin();
-
-          while (!it3.IsAtEnd())
-          {
-          it4.Set(it3.Get());
-          ++it3;
-          ++it4;
-          }
-
-          // increment iterator
-          seriesItr++; 
-          idx++;
-
-          }
 
 
-          typedef itk::PermuteAxesImageFilter< ShortImageType4D > SwapFilterType;
-          SwapFilterType::Pointer swap = SwapFilterType::New();
-          swap->SetInput( image4D );
+              ShortImageType4D::SizeType inputSize = image4D->GetLargestPossibleRegion().GetSize();
 
-          SwapFilterType::PermuteOrderArrayType order;
-          order[0] = 0;
-          order[1] = 1;
-          order[2] = 3;
-          order[3] = 2;
-          swap->SetOrder( order );
-          swap->Update();
+              ShortImageType4D::IndexType inputIndex = image4D->GetLargestPossibleRegion().GetIndex();
 
-          ShortImageType4D::Pointer inputVol = swap->GetOutput();
-
-          // "inputVol" is read as a 4D image. Here we extract each 3D component and write that to disk
-  
-            ShortImageType4D::SizeType inputSize = swap->GetOutput()->GetLargestPossibleRegion().GetSize();
-
-            ShortImageType4D::IndexType inputIndex = swap->GetOutput()->GetLargestPossibleRegion().GetIndex();
-
-            const ShortImageType4D::SizeType size4Dr = swap->GetOutput()->GetBufferedRegion().GetSize();
-            std::cout<<"new size"<<size4Dr <<std::endl;
+              const ShortImageType4D::SizeType size4Dimported = image4D->GetBufferedRegion().GetSize();
+              std::cout<<"new size"<<size4Dimported<<std::endl;
 
 
-            const unsigned int volumeCount = size4Dr[3];
+            // typedef itk::PermuteAxesImageFilter< ShortImageType4D > SwapFilterType;
+            // SwapFilterType::Pointer swap = SwapFilterType::New();
+            // swap->SetInput( image4D );
 
-         // for( size_t componentNumber = 0; componentNumber < volumeCount; ++componentNumber )
-         //   {
-            ShortImageType4D::SizeType extractSize = size4Dr;
-            extractSize[3] = 0;
-            ShortImageType4D::IndexType extractIndex = inputIndex;
-            extractIndex[3] = 1;
-            ShortImageType4D::RegionType extractRegion33(extractIndex, extractSize);
+            //   ShortImageType4D::SizeType extractSize = size4Dimported;
+            //   extractSize[3] = 0;
+            //   ShortImageType4D::IndexType extractIndex = inputIndex;
+            //   extractIndex[3] = 1;
+            //   ShortImageType4D::RegionType extractRegion33(extractIndex, extractSize);
 
-            extracter->SetExtractionRegion( extractRegion33 );
-            extracter->SetInput( swap->GetOutput() );
-            extracter->SetDirectionCollapseToIdentity();
-            extracter->UpdateLargestPossibleRegion();
+            //   extracter->SetExtractionRegion( extractRegion33 );
+            //   extracter->SetInput( image4D );
+            //   extracter->SetDirectionCollapseToIdentity();
+            //   extracter->UpdateLargestPossibleRegion();
 
             // Need to zeropad to ensure that files are printed in order.
             // std::stringstream fNumber("");
@@ -447,7 +498,7 @@ FileDicomChoose::FileDicomChoose(const InputParameters & params) : _status(0)
 
 
 
-      //we try to read the cardiac series: //second trial
+      // //second trial
 
 
       // //trying to consider different temporal Siemens series: to be fixed 
